@@ -1,23 +1,48 @@
 import os
 import json
 import gspread
+import requests
+from bs4 import BeautifulSoup
+import re
 from google.oauth2.service_account import Credentials
 
-# 1. Recuperiamo la "chiave" dalla cassaforte di GitHub
+# --- CONFIGURAZIONE GOOGLE SHEETS ---
 creds_json = os.getenv('GOOGLE_CREDENTIALS')
 info = json.loads(creds_json)
 creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
-
-# 2. Ci colleghiamo a Google Sheets
 client = gspread.authorize(creds)
-# SOSTITUISCI 'IlMioFoglio' con il nome esatto del tuo file Google Sheets!
+# ASSICURATI CHE IL NOME QUI SOTTO SIA IDENTICO AL TUO FOGLIO
 sheet = client.open("emailscraper").sheet1 
 
-# 3. Funzione per salvare le email
-def salva_email(email_lista):
-    for email in email_lista:
-        sheet.append_row([email])
-    print("Email salvate correttamente!")
+# --- FUNZIONE PER TROVARE EMAIL ---
+def estrai_email_da_url(url):
+    print(f"Analizzando: {url}")
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=10)
+        # Cerchiamo pattern di email nel testo della pagina
+        emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,}', response.text)
+        return list(set(emails)) # Rimuove i duplicati
+    except Exception as e:
+        print(f"Errore su {url}: {e}")
+        return []
 
-# Esempio di test
-salva_email(["test@esempio.it", "info@barzack.com"])
+# --- LISTA DEI SITI DA CUI PARTIRE ---
+urls = [
+    "https://www.asl.pe.it/Sezione.jsp?idSezione=863",
+    "https://www.asl.pe.it/ListaMedici.jsp"
+]
+
+# --- ESECUZIONE ---
+tutte_le_email = []
+for sito in urls:
+    risultati = estrai_email_da_url(sito)
+    tutte_le_email.extend(risultati)
+
+# Salva su Google Sheets
+if tutte_le_email:
+    for email in list(set(tutte_le_email)):
+        sheet.append_row([email])
+    print(f"Fatto! Ho trovato e salvato {len(set(tutte_le_email))} email.")
+else:
+    print("Nessuna email trovata in queste pagine.")
