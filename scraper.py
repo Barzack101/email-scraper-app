@@ -1,23 +1,23 @@
-import re
-import requests
+import os
+import json
+import gspread
+from google.oauth2.service_account import Credentials
 
-def estrai_email(url):
-    print(f"Sto analizzando il sito: {url}")
-    try:
-        # 1. Scarichiamo la pagina
-        risposta = requests.get(url, timeout=10)
-        testo = risposta.text
-        
-        # 2. Cerchiamo le email con la Regex
-        pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-        email_trovate = re.findall(pattern, testo)
-        
-        # 3. Puliamo i duplicati
-        return list(set(email_trovate))
-    except Exception as e:
-        return f"Errore durante l'analisi: {e}"
+# 1. Recuperiamo la "chiave" dalla cassaforte di GitHub
+creds_json = os.getenv('GOOGLE_CREDENTIALS')
+info = json.loads(creds_json)
+creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
 
-# PROVA PRATICA
-sito = "https://www.esempio.it" # Cambia questo con un sito vero per testare
-risultati = estrai_email(sito)
-print(f"Email trovate: {risultati}")
+# 2. Ci colleghiamo a Google Sheets
+client = gspread.authorize(creds)
+# SOSTITUISCI 'IlMioFoglio' con il nome esatto del tuo file Google Sheets!
+sheet = client.open("emailscraper").sheet1 
+
+# 3. Funzione per salvare le email
+def salva_email(email_lista):
+    for email in email_lista:
+        sheet.append_row([email])
+    print("Email salvate correttamente!")
+
+# Esempio di test
+salva_email(["test@esempio.it", "info@barzack.com"])
