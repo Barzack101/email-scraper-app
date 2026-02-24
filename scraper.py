@@ -1,10 +1,23 @@
 import re
+import requests
 
-# Questo è un test: cerchiamo email in un testo finto
-testo_di_prova = "Mandami una mail a info@test.it o a supporto@azienda.com"
+def estrai_email(url):
+    print(f"Sto analizzando il sito: {url}")
+    try:
+        # 1. Scarichiamo la pagina
+        risposta = requests.get(url, timeout=10)
+        testo = risposta.text
+        
+        # 2. Cerchiamo le email con la Regex
+        pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        email_trovate = re.findall(pattern, testo)
+        
+        # 3. Puliamo i duplicati
+        return list(set(email_trovate))
+    except Exception as e:
+        return f"Errore durante l'analisi: {e}"
 
-# La formula per estrarre le email
-email_estratte = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', testo_di_prova)
-
-print("Email trovate:")
-print(email_estratte)
+# PROVA PRATICA
+sito = "https://www.esempio.it" # Cambia questo con un sito vero per testare
+risultati = estrai_email(sito)
+print(f"Email trovate: {risultati}")
