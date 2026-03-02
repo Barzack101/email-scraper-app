@@ -29,6 +29,7 @@ def estrai_email_da_url(url):
 
 # --- 2. LISTA SITI ---
 urls = [
+    "https://www.asl.pe.it/Sezione.jsp?idSezione=818"
     "https://www.poloautomotive.it/i-soci/",
     "https://www.agenziaprivacy.it/elenco-aziende-abruzzo/"
     "https://www.confindustriaabruzzo.it/chi-siamo/le-territoriali.html"
