@@ -62,21 +62,13 @@ def esplora_e_estrai(url_dominio):
 
 # --- 2. LISTA BERSAGLI (Solo domini principali) ---
 urls = [
-    "https://www.sangritana.it",
-    "https://www.baldisserratrasporti.it",
-    "https://www.diantoniotrasporti.it",
-    "https://www.smargiassitrasporti.it",
-    "https://www.trasportidofre.com",
-    "https://www.consorzio-pca.it", # Polo logistico
-    "https://www.fllimancini.it", # Logistica e trasporti
-    "https://www.tiberiotrasporti.it",
-    "https://www.clai-logistica.it",
-    "https://www.trasporticf.it",
-    "https://www.logistica3.it",
-    "https://www.disante.it", # Arredamenti/Magazzino
-    "https://www.nuovasfp.it", # Carpenteria/Logistica
-    "https://www.ge-car.it", # Movimentazione merci
-    "https://www.italtrasporti.it"
+    "https://www.paginegialle.it/abruzzo/trasporti.html",
+    "https://www.paginegialle.it/abruzzo/logistica.html",
+    "https://www.paginegialle.it/abruzzo/magazzinaggio.html",
+    "https://www.infoimprese.it/", # Portale delle Camere di Commercio
+    "https://www.aziendeabruzzo.it/",
+    "https://www.contattaziende.it/abruzzo/",
+    "https://www.impreseabruzzo.it/"
 ]
 
 # --- 3. SCRITTURA ---
