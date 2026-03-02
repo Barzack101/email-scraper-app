@@ -57,19 +57,16 @@ def analizza_sito_totale(url_principale):
 
 # --- 2. LISTA BERSAGLI AMPLIATA (Toyota Lead) ---
 urls = [
-    "https://www.dinino.it/contatti/",
-    "https://www.laspina.it/contatti/",
-    "https://www.tuaabruzzo.it/index.php?id=21",
-    "https://www.sangritana.it/contatti/",
-    "https://www.interportoabruzzo.it/contatti/",
-    "https://www.magazzinigabriele.it/contatti/",
-    "https://www.clai-logistica.it/contatti/",
-    "https://www.smet.it/contatti/",
-    "https://www.brioni.com/it/it/contatti",
-    "https://www.valdisangro.it/aziende-consortili/",
-    "https://www.conad.it/ricerca-negozi.html/abruzzo", # Grandi centri distribuzione
-    "https://www.lube.it/it/punti-vendita/abruzzo/", # Magazzini arredamento
-    "https://www.mondoconv.it/punti-vendita/abruzzo" # Logistica mobili
+    "https://www.fatergroup.com", # Pescara - Magazzini enormi
+    "https://www.denso.com", # San Salvo - Automotive/Logistica
+    "https://www.pilkington.com", # San Salvo - Vetri/Logistica
+    "https://www.tuaabruzzo.it", # Trasporti regionali
+    "https://www.valagro.com", # Atessa - Chimica/Logistica
+    "https://www.honda.it", # Atessa - Produzione/Logistica
+    "https://www.alfagomma.com", # Castelnuovo Vomano
+    "https://www.pampryl.it", # Conserve/Logistica
+    "https://www.pasta-delverde.com", # Fara San Martino
+    "https://www.dececco.it" # Fara San Martino / Pescara
 ]
 
 # --- 3. ESECUZIONE ---
