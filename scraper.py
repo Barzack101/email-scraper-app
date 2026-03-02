@@ -29,8 +29,9 @@ def estrai_email_da_url(url):
 
 # --- 2. LISTA SITI ---
 urls = [
-    "https://www.asl.pe.it/Sezione.jsp?idSezione=863",
-    "https://www.asl.pe.it/ListaMedici.jsp"
+    "https://www.poloautomotive.it/i-soci/",
+    "https://www.agenziaprivacy.it/elenco-aziende-abruzzo/"
+    "https://www.confindustriaabruzzo.it/chi-siamo/le-territoriali.html"
 ]
 
 # --- 3. LOGICA ANTI-DUPLICATI ---
