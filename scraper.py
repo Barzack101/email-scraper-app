@@ -62,10 +62,14 @@ def esplora_e_estrai(url_dominio):
 
 # --- 2. LISTA BERSAGLI (Solo domini principali) ---
 urls = [
-    "https://grupporsc.com/"
-"https://www.3tlogistics.it/"
+    "https://www.paginegialle.it/abruzzo/autotrasporti.html",
+    "https://www.paginegialle.it/abruzzo/corrieri.html",
+    "https://www.aziende.it/abruzzo/trasporti-e-logistica/",
+    "https://www.kompass.com/it/y/it/r/abruzzo/it_13/", # Portale B2B internazionale molto sicuro
+    "https://www.uif.it/elenco-aziende-abruzzo/", # Unione Industriali
+    "https://www.portaleaziende.it/regione/abruzzo/settore/trasporti",
+    "https://www.paginebianche.it/abruzzo/trasporti-merci.html"
 ]
-
 # --- 3. SCRITTURA ---
 email_esistenti = set(sheet.col_values(2)) 
 nuove_estratte = []
