@@ -14,7 +14,7 @@ creds_json = os.getenv('GOOGLE_CREDENTIALS')
 info = json.loads(creds_json)
 creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
-sheet = client.open("emailscraper").sheet1 
+sheet = client.open("Logistica_Abruzzo").sheet1 
 
 def cerca_email_nel_testo(testo):
     # Filtra email valide ignorando estensioni di immagini comuni
@@ -58,10 +58,18 @@ def analizza_sito_profondo(url_principale):
 
 # --- 2. LISTA TARGET ABRUZZO (Logistica e Industria) ---
 # Iniziamo con alcuni portali che aggregano aziende industriali
-urls = [
-    "https://www.poloautomotive.it/i-soci/",
-    "https://www.confindustriaabruzzo.it/chi-siamo/le-territoriali.html",
-    "https://www.arapit.it/aziende-insediate/" # Aziende insediate nei nuclei industriali
+urls = 
+    "https://www.dinino.it/contatti/",
+    "https://www.laspina.it/contatti/",
+    "https://www.tuaabruzzo.it/index.php?id=21",
+    "https://www.sangritana.it/contatti/",
+    "https://www.interportoabruzzo.it/contatti/",
+    "https://www.magazzinigabriele.it/contatti/",
+    "https://www.clai-logistica.it/contatti/",
+    "https://www.smet.it/contatti/",
+    "https://www.brioni.com/it/it/contatti",
+    "https://www.valdisangro.it/aziende-consortili/"
+]
 ]
 
 # --- 3. LOGICA ANTI-DUPLICATI E SCRITTURA ---
