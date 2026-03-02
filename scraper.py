@@ -62,16 +62,21 @@ def esplora_e_estrai(url_dominio):
 
 # --- 2. LISTA BERSAGLI (Solo domini principali) ---
 urls = [
-    "https://www.fatergroup.com", 
-    "https://www.denso.com", 
-    "https://www.pilkington.com", 
-    "https://www.tuaabruzzo.it", 
-    "https://www.valagro.com", 
-    "https://www.honda.it", 
-    "https://www.alfagomma.com", 
-    "https://www.pasta-delverde.com", 
-    "https://www.dececco.it",
-    "https://www.arpaonline.it"
+    "https://www.sangritana.it",
+    "https://www.baldisserratrasporti.it",
+    "https://www.diantoniotrasporti.it",
+    "https://www.smargiassitrasporti.it",
+    "https://www.trasportidofre.com",
+    "https://www.consorzio-pca.it", # Polo logistico
+    "https://www.fllimancini.it", # Logistica e trasporti
+    "https://www.tiberiotrasporti.it",
+    "https://www.clai-logistica.it",
+    "https://www.trasporticf.it",
+    "https://www.logistica3.it",
+    "https://www.disante.it", # Arredamenti/Magazzino
+    "https://www.nuovasfp.it", # Carpenteria/Logistica
+    "https://www.ge-car.it", # Movimentazione merci
+    "https://www.italtrasporti.it"
 ]
 
 # --- 3. SCRITTURA ---
