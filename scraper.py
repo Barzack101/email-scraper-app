@@ -14,42 +14,48 @@ creds_json = os.getenv('GOOGLE_CREDENTIALS')
 info = json.loads(creds_json)
 creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
-
-# APRIAMO IL NUOVO FOGLIO
 sheet = client.open("Logistica_Abruzzo").sheet1 
 
 def cerca_email_nel_testo(testo):
     emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', testo)
-    return list(set(e.lower() for e in emails if not e.endswith(('.png', '.jpg', '.gif', '.pdf', '.svg'))))
+    return list(set(e.lower() for e in emails if not e.endswith(('.png', '.jpg', '.gif', '.pdf', '.svg', '.webp'))))
 
-def analizza_sito_profondo(url_principale):
-    print(f"Investigando: {url_principale}")
+def analizza_sito_totale(url_principale):
+    print(f"Scansione profonda avviata per: {url_principale}")
     email_trovate_sito = set()
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    
     try:
-        response = requests.get(url_principale, headers=headers, timeout=15)
+        response = requests.get(url_principale, headers=headers, timeout=20)
         soup = BeautifulSoup(response.text, 'html.parser')
         email_trovate_sito.update(cerca_email_nel_testo(response.text))
         
-        pagine_interessanti = []
+        # Cerchiamo link strategici
+        pagine_target = []
+        parole_chiave = ['contatt', 'chi siamo', 'about', 'info', 'dove', 'uffic', 'amministraz', 'legal', 'privacy']
+        
         for link in soup.find_all('a', href=True):
             testo_link = link.text.lower()
             href = link['href']
-            if any(parola in testo_link for parola in ['contatt', 'chi siamo', 'about', 'info', 'dove']):
-                pagine_interessanti.append(urljoin(url_principale, href))
+            if any(p in testo_link for p in parole_chiave) or any(p in href.lower() for p in parole_chiave):
+                pagine_target.append(urljoin(url_principale, href))
         
-        for sub_url in list(set(pagine_interessanti))[:3]:
+        # Analizziamo fino a 10 sottopagine per trovare l'impossibile
+        for sub_url in list(set(pagine_target))[:10]:
             try:
-                sub_res = requests.get(sub_url, headers=headers, timeout=10)
+                print(f"  --> Scavando in: {sub_url}")
+                sub_res = requests.get(sub_url, headers=headers, timeout=12)
                 email_trovate_sito.update(cerca_email_nel_testo(sub_res.text))
-                time.sleep(1)
+                time.sleep(0.5) 
             except:
                 continue
+                
     except Exception as e:
         print(f"Errore su {url_principale}: {e}")
+        
     return list(email_trovate_sito)
 
-# --- 2. LISTA SITI LOGISTICA ABRUZZO ---
+# --- 2. LISTA BERSAGLI AMPLIATA (Toyota Lead) ---
 urls = [
     "https://www.dinino.it/contatti/",
     "https://www.laspina.it/contatti/",
@@ -60,15 +66,18 @@ urls = [
     "https://www.clai-logistica.it/contatti/",
     "https://www.smet.it/contatti/",
     "https://www.brioni.com/it/it/contatti",
-    "https://www.valdisangro.it/aziende-consortili/"
+    "https://www.valdisangro.it/aziende-consortili/",
+    "https://www.conad.it/ricerca-negozi.html/abruzzo", # Grandi centri distribuzione
+    "https://www.lube.it/it/punti-vendita/abruzzo/", # Magazzini arredamento
+    "https://www.mondoconv.it/punti-vendita/abruzzo" # Logistica mobili
 ]
 
-# --- 3. SCRITTURA ---
+# --- 3. ESECUZIONE ---
 email_esistenti = set(sheet.col_values(2)) 
 nuove_estratte = []
 
 for sito in urls:
-    trovate = analizza_sito_profondo(sito)
+    trovate = analizza_sito_totale(sito)
     for email in trovate:
         if email not in email_esistenti:
             data_oggi = datetime.now().strftime("%d/%m/%Y")
@@ -77,6 +86,6 @@ for sito in urls:
 
 if nuove_estratte:
     sheet.append_rows(nuove_estratte)
-    print(f"Fatto! Aggiunti {len(nuove_estratte)} nuovi contatti.")
+    print(f"Missione compiuta: {len(nuove_estratte)} nuove email estratte!")
 else:
-    print("Nessuna nuova email trovata.")
+    print("Nessun dato nuovo trovato in questo giro.")
