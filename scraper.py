@@ -12,47 +12,67 @@ creds_json = os.getenv('GOOGLE_CREDENTIALS')
 info = json.loads(creds_json)
 creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
-sheet = client.open("ricerca_mail_categoria_sanita'").sheet1
 
-def estrazione_documenti(url, cat, prov):
-    print(f"Scansione database su: {url}")
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+# Il tuo foglio specifico per la sanità
+NOME_FOGLIO = "ricerca_mail_categoria_sanita'"
+sheet = client.open(NOME_FOGLIO).sheet1
+
+def estrazione_mirata_asl(url, categoria):
+    print(f"Scansione intensiva ASL Pescara: {url}")
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.asl.pe.it/'
+    }
     try:
-        # Carichiamo la pagina cercando liste massive
-        res = requests.get(url, headers=headers, timeout=45)
-        # Cerchiamo email ovunque nel codice della pagina
+        # Aumentiamo il timeout perché le liste ASL possono essere pesanti
+        res = requests.get(url, headers=headers, timeout=60)
+        res.raise_for_status()
+        
+        # Regex per trovare tutte le email nel codice della pagina
         emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', res.text)
         
-        nuovi = []
+        risultati = []
         for email in set(emails):
             email = email.lower()
-            if not any(x in email for x in ['aruba', 'pec', 'legalmail', 'postacert']):
+            # Escludiamo email tecniche o PEC per dare al cliente solo i contatti diretti
+            if not any(x in email for x in ['aruba', 'pec', 'legalmail', 'postacert', 'hosting']):
                 nome = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-                nuovi.append([datetime.now().strftime("%d/%m/%Y"), nome, email, cat, prov])
-        return nuovi
-    except:
+                risultati.append([
+                    datetime.now().strftime("%d/%m/%Y"), 
+                    nome, 
+                    email, 
+                    categoria, 
+                    "PESCARA"
+                ])
+        return risultati
+    except Exception as e:
+        print(f"Errore durante la scansione di {url}: {e}")
         return []
 
-# --- 2. LE SORGENTI "APERTE" (Portali con elenchi lunghi) ---
-# Ho inserito i portali che solitamente non bloccano i bot e hanno liste testuali
+# --- 2. LE TUE SORGENTI SPECIFICHE ---
 targets = [
-    ("https://www.asl.pe.it/Sezione.jsp?idSezione=863"),
-    ("https://www.asl.pe.it/ListaMedici.jsp"),
-    
-# --- 3. ESECUZIONE ---
-dati_accumulati = []
-for url, cat, prov in targets:
-    dati_accumulati.extend(estrazione_documenti(url, cat, prov))
+    ("https://www.asl.pe.it/ListaMedici.jsp", "MEDICI SPECIALISTI"),
+    ("https://www.asl.pe.it/Sezione.jsp?idSezione=863", "MEDICI CONVENZIONATI")
+]
 
-if dati_accumulati:
+# --- 3. ESECUZIONE E CARICAMENTO ---
+accumulo_dati = []
+for url, cat in targets:
+    accumulo_dati.extend(estrazione_mirata_asl(url, cat))
+
+if accumulo_dati:
+    # Recuperiamo le email già presenti per evitare i famosi "43" duplicati
     email_esistenti = set(sheet.col_values(3))
-    da_inviare = [d for d in dati_accumulati if d[2] not in email_esistenti]
+    da_inserire = [d for d in accumulo_dati if d[2] not in email_esistenti]
     
-    if da_inviare:
-        # Carichiamo i dati a blocchi di 50 per evitare errori di timeout
-        for i in range(0, len(da_inviare), 50):
-            sheet.append_rows(da_inviare[i:i+50])
-            time.sleep(2)
-        print(f"SUCCESSO! Aggiunti {len(da_inviare)} contatti.")
+    if da_inserire:
+        # Carichiamo i dati a blocchi per sicurezza
+        for i in range(0, len(da_inserire), 50):
+            sheet.append_rows(da_inserire[i:i+50])
+            print(f"Inseriti {len(da_inserire[i:i+50])} nuovi contatti...")
+            time.sleep(1)
+        print(f"COMPLETATO! Totale nuovi medici aggiunti: {len(da_inserire)}")
     else:
-        print("Nessun nuovo contatto trovato rispetto ai 43.")
+        print("Nessun nuovo contatto trovato rispetto a quelli già nel foglio.")
+else:
+    print("Il sito non ha restituito email. Potrebbe servire una ricerca manuale sui PDF.")
