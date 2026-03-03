@@ -36,14 +36,9 @@ def estrazione_documenti(url, cat, prov):
 # --- 2. LE SORGENTI "APERTE" (Portali con elenchi lunghi) ---
 # Ho inserito i portali che solitamente non bloccano i bot e hanno liste testuali
 targets = [
-    ("https://www.regione.abruzzo.it/content/elenco-medici-e-pediatri", "MEDICI REGIONE", "ABRUZZO"),
-    ("https://www.aslpe.it/pagine.zhtml?id=123", "MEDICI ASL", "PESCARA"),
-    ("https://www.asl2abruzzo.it/area-riservata/servizi-online/medici-e-pediatri.html", "MEDICI ASL", "CHIETI"),
-    ("https://www.elencofarmacie.it/abruzzo", "FARMACIE", "ABRUZZO"),
-    ("https://www.paginegialle.it/abruzzo/medici-specialisti.html", "SPECIALISTI", "ABRUZZO"),
-    ("https://www.paginegialle.it/abruzzo/farmacie.html", "FARMACIE", "ABRUZZO")
-]
-
+    ("https://www.asl.pe.it/Sezione.jsp?idSezione=863"),
+    ("https://www.asl.pe.it/ListaMedici.jsp"),
+    
 # --- 3. ESECUZIONE ---
 dati_accumulati = []
 for url, cat, prov in targets:
