@@ -12,67 +12,57 @@ creds_json = os.getenv('GOOGLE_CREDENTIALS')
 info = json.loads(creds_json)
 creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
+sheet = client.open("ricerca_mail_categoria_sanita'").sheet1
 
-# Il tuo foglio specifico per la sanità
-NOME_FOGLIO = "ricerca_mail_categoria_sanita'"
-sheet = client.open(NOME_FOGLIO).sheet1
-
-def estrazione_mirata_asl(url, categoria):
-    print(f"Scansione intensiva ASL Pescara: {url}")
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.asl.pe.it/'
-    }
+def estrai_asl_regionale(url, categoria, provincia):
+    print(f"Scansione: {categoria} - {provincia}...")
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
     try:
-        # Aumentiamo il timeout perché le liste ASL possono essere pesanti
-        res = requests.get(url, headers=headers, timeout=60)
-        res.raise_for_status()
-        
-        # Regex per trovare tutte le email nel codice della pagina
+        res = requests.get(url, headers=headers, timeout=45)
         emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', res.text)
         
-        risultati = []
+        nuovi = []
         for email in set(emails):
             email = email.lower()
-            # Escludiamo email tecniche o PEC per dare al cliente solo i contatti diretti
-            if not any(x in email for x in ['aruba', 'pec', 'legalmail', 'postacert', 'hosting']):
+            if not any(x in email for x in ['aruba', 'pec', 'legalmail', 'postacert']):
                 nome = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-                risultati.append([
-                    datetime.now().strftime("%d/%m/%Y"), 
-                    nome, 
-                    email, 
-                    categoria, 
-                    "PESCARA"
-                ])
-        return risultati
-    except Exception as e:
-        print(f"Errore durante la scansione di {url}: {e}")
-        return []
+                nuovi.append([datetime.now().strftime("%d/%m/%Y"), nome, email, categoria, provincia])
+        return nuovi
+    except: return []
 
-# --- 2. LE TUE SORGENTI SPECIFICHE ---
+# --- 2. MAPPA DEI DATABASE ABRUZZESI ---
 targets = [
-    ("https://www.asl.pe.it/ListaMedici.jsp", "MEDICI SPECIALISTI"),
-    ("https://www.asl.pe.it/Sezione.jsp?idSezione=863", "MEDICI CONVENZIONATI")
+    # PESCARA (I tuoi link vincenti)
+    ("https://www.asl.pe.it/ListaMedici.jsp", "SPECIALISTI", "PESCARA"),
+    ("https://www.asl.pe.it/Sezione.jsp?idSezione=863", "CONVENZIONATI", "PESCARA"),
+    
+    # CHIETI / VASTO / LANCIANO
+    ("https://www.asl2abruzzo.it/contatti.html", "MEDICI ASL", "CHIETI"),
+    ("https://www.asl2abruzzo.it/area-riservata/servizi-online/medici-e-pediatri.html", "PEDIATRI/BASE", "CHIETI"),
+    
+    # L'AQUILA / AVEZZANO / SULMONA
+    ("https://www.asl1abruzzo.it/index.php/medici-e-pediatri", "SPECIALISTI", "L'AQUILA"),
+    ("https://www.asl1abruzzo.it/index.php/contatti", "UFFICI MEDICI", "L'AQUILA"),
+    
+    # TERAMO
+    ("https://www.aslteramo.it/servizi/medici-e-pediatri-di-famiglia/", "MEDICI DI BASE", "TERAMO"),
+    ("https://www.aslteramo.it/trasparenza/personale/personale-non-a-tempo-indeterminato/", "SPECIALISTI", "TERAMO"),
+    
+    # REGIONE ABRUZZO (Il portale unico)
+    ("https://sanita.regione.abruzzo.it/canale-medici", "ELENCO REGIONALE", "ABRUZZO")
 ]
 
-# --- 3. ESECUZIONE E CARICAMENTO ---
-accumulo_dati = []
-for url, cat in targets:
-    accumulo_dati.extend(estrazione_mirata_asl(url, cat))
+# --- 3. ESECUZIONE ---
+accumulo_totale = []
+for url, cat, prov in targets:
+    accumulo_totale.extend(estrai_asl_regionale(url, cat, prov))
 
-if accumulo_dati:
-    # Recuperiamo le email già presenti per evitare i famosi "43" duplicati
+if accumulo_totale:
     email_esistenti = set(sheet.col_values(3))
-    da_inserire = [d for d in accumulo_dati if d[2] not in email_esistenti]
+    da_inserire = [d for d in accumulo_totale if d[2] not in email_esistenti]
     
     if da_inserire:
-        # Carichiamo i dati a blocchi per sicurezza
         for i in range(0, len(da_inserire), 50):
             sheet.append_rows(da_inserire[i:i+50])
-            print(f"Inseriti {len(da_inserire[i:i+50])} nuovi contatti...")
             time.sleep(1)
-        print(f"COMPLETATO! Totale nuovi medici aggiunti: {len(da_inserire)}")
-    else:
-        print("Nessun nuovo contatto trovato rispetto a quelli già nel foglio.")
-else:
-    print("Il sito non ha restituito email. Potrebbe servire una ricerca manuale sui PDF.")
+        print(f"LAVORO COMPLETATO! Aggiunti {len(da_inserire)} nuovi contatti.")
