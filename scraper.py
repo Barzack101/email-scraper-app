@@ -14,52 +14,50 @@ creds = Credentials.from_service_account_info(info, scopes=["https://www.googlea
 client = gspread.authorize(creds)
 sheet = client.open("ricerca_mail_categoria_sanita'").sheet1
 
-def estrazione_massiva(url, cat, prov):
-    print(f"Tentativo di scarico massivo su: {url}")
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
+def estrazione_documenti(url, cat, prov):
+    print(f"Scansione database su: {url}")
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     try:
-        # Aumentiamo il timeout per scaricare liste lunghe
-        res = requests.get(url, headers=headers, timeout=40)
+        # Carichiamo la pagina cercando liste massive
+        res = requests.get(url, headers=headers, timeout=45)
+        # Cerchiamo email ovunque nel codice della pagina
         emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', res.text)
         
-        risultati = []
+        nuovi = []
         for email in set(emails):
             email = email.lower()
-            if not any(x in email for x in ['aruba', 'pec', 'postacert', 'legalmail']):
+            if not any(x in email for x in ['aruba', 'pec', 'legalmail', 'postacert']):
                 nome = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-                risultati.append([datetime.now().strftime("%d/%m/%Y"), nome, email, cat, prov])
-        return risultati
+                nuovi.append([datetime.now().strftime("%d/%m/%Y"), nome, email, cat, prov])
+        return nuovi
     except:
         return []
 
-# --- 2. LE "SORGENTI" REGIONALI E ISTITUZIONALI ---
-# Questi siti contengono spesso elenchi lunghissimi in una sola pagina
+# --- 2. LE SORGENTI "APERTE" (Portali con elenchi lunghi) ---
+# Ho inserito i portali che solitamente non bloccano i bot e hanno liste testuali
 targets = [
-    # Liste Medici e Pediatri ASL Abruzzo (Trasparenza)
-    ("https://sanita.regione.abruzzo.it/canale-medici", "MEDICI REGIONE", "ABRUZZO"),
-    ("https://www.asl1abruzzo.it/index.php/medici-e-pediatri", "PEDIATRI/BASE", "L'AQUILA"),
-    ("https://www.asl2abruzzo.it/contatti/centri-unici-di-prenotazione-cup.html", "SPECIALISTI", "CHIETI"),
+    ("https://www.regione.abruzzo.it/content/elenco-medici-e-pediatri", "MEDICI REGIONE", "ABRUZZO"),
     ("https://www.aslpe.it/pagine.zhtml?id=123", "MEDICI ASL", "PESCARA"),
-    
-    # Portali con elenchi specialistici molto lunghi
+    ("https://www.asl2abruzzo.it/area-riservata/servizi-online/medici-e-pediatri.html", "MEDICI ASL", "CHIETI"),
     ("https://www.elencofarmacie.it/abruzzo", "FARMACIE", "ABRUZZO"),
     ("https://www.paginegialle.it/abruzzo/medici-specialisti.html", "SPECIALISTI", "ABRUZZO"),
-    ("https://www.aziendeabruzzo.it/settore/sanita", "AZIENDE SANITARIE", "ABRUZZO")
+    ("https://www.paginegialle.it/abruzzo/farmacie.html", "FARMACIE", "ABRUZZO")
 ]
 
 # --- 3. ESECUZIONE ---
-accumulo = []
+dati_accumulati = []
 for url, cat, prov in targets:
-    accumulo.extend(estrazione_massiva(url, cat, prov))
+    dati_accumulati.extend(estrazione_documenti(url, cat, prov))
 
-if accumulo:
-    # Recuperiamo solo la colonna delle email per il controllo duplicati
+if dati_accumulati:
     email_esistenti = set(sheet.col_values(3))
-    da_inserire = [a for a in accumulo if a[2] not in email_esistenti]
+    da_inviare = [d for d in dati_accumulati if d[2] not in email_esistenti]
     
-    if da_inserire:
-        # Inseriamo a blocchi per non sovraccaricare Google Sheets
-        sheet.append_rows(da_inserire)
-        print(f"SUCCESSO! Trovati {len(da_inserire)} nuovi contatti.")
+    if da_inviare:
+        # Carichiamo i dati a blocchi di 50 per evitare errori di timeout
+        for i in range(0, len(da_inviare), 50):
+            sheet.append_rows(da_inviare[i:i+50])
+            time.sleep(2)
+        print(f"SUCCESSO! Aggiunti {len(da_inviare)} contatti.")
     else:
-        print("Nessun nuovo contatto trovato rispetto ai 43 precedenti.")
+        print("Nessun nuovo contatto trovato rispetto ai 43.")
