@@ -15,50 +15,50 @@ client = gspread.authorize(creds)
 NOME_FOGLIO = "ricerca_mail_categoria_sanita'"
 sheet = client.open(NOME_FOGLIO).sheet1
 
-def cerca_lead_sanita(url, categoria, provincia):
-    print(f"Rastrellamento intensivo: {categoria} a {provincia}...")
-    nuovi_scovati = []
+def cerca_lead_chirurgico(url, categoria, provincia):
+    print(f"Ricerca profonda: {categoria} - {provincia}")
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    trovate = []
     try:
         res = requests.get(url, headers=headers, timeout=25)
-        # Cerchiamo blocchi di testo che contengono email
+        # Cerchiamo le email nel testo
         emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', res.text)
-        
         for email in list(set(emails)):
-            if not email.endswith(('.png', '.jpg', '.pdf', '.gif', '.svg')):
-                # Creiamo Nome e Cognome dall'email
-                nome_proposta = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-                nuovi_scovati.append([datetime.now().strftime("%d/%m/%Y"), nome_proposta, email.lower(), categoria, provincia])
+            if not email.endswith(('.png', '.jpg', '.pdf', '.gif', '.svg', '.webp')):
+                nome_proposto = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+                trovate.append([datetime.now().strftime("%d/%m/%Y"), nome_proposta, email.lower(), categoria, provincia])
     except:
         pass
-    return nuovi_scovati
+    return trovate
 
-# --- 2. BERSAGLI AD ALTA DENSITÀ (Portali di Ricerca) ---
+# --- 2. BERSAGLI: CLINICHE E POLIAMBULATORI (Dove si nascondono i medici) ---
 targets = [
-    # ELENCHI SPECIALISTI ABRUZZO
-    ("https://www.paginegialle.it/abruzzo/medici-specialisti.html", "SPECIALISTI", "ABRUZZO"),
-    ("https://www.paginegialle.it/pescara/medici-specialisti.html", "SPECIALISTI", "PESCARA"),
-    ("https://www.paginegialle.it/chieti/medici-specialisti.html", "SPECIALISTI", "CHIETI"),
-    ("https://www.paginegialle.it/teramo/medici-specialisti.html", "SPECIALISTI", "TERAMO"),
-    ("https://www.paginegialle.it/laquila/medici-specialisti.html", "SPECIALISTI", "L'AQUILA"),
+    # CHIETI E PESCARA (Centri Specialistici)
+    ("https://www.paginegialle.it/chieti/ambulatori-e-consultori.html", "SPECIALISTI", "CHIETI"),
+    ("https://www.paginegialle.it/pescara/ambulatori-e-consultori.html", "SPECIALISTI", "PESCARA"),
+    ("https://www.paginegialle.it/abruzzo/centri-medici.html", "CENTRI MEDICI", "ABRUZZO"),
     
-    # FARMACIE E PEDIATRI (Molto facili da trovare)
-    ("https://www.paginegialle.it/abruzzo/farmacie.html", "FARMACIE", "ABRUZZO"),
+    # PEDIATRI (Ricerca dedicata)
     ("https://www.paginegialle.it/abruzzo/pediatri.html", "PEDIATRI", "ABRUZZO"),
     
-    # CLINICHE E CENTRI MEDICI (Contengono decine di specialisti ciascuno)
-    ("https://www.paginegialle.it/abruzzo/centri-medici.html", "CENTRI MEDICI", "ABRUZZO"),
-    ("https://www.paginegialle.it/pescara/cliniche-private.html", "CLINICHE", "PESCARA")
+    # ODONTOIATRI E DENTISTI (Categoria enorme)
+    ("https://www.paginegialle.it/abruzzo/dentisti-medici-chirurghi-ed-odontoiatri.html", "ODONTOIATRI", "ABRUZZO"),
+    
+    # CLINICHE PRIVATE (Pierangeli, Spatocco, ecc. spesso appaiono qui)
+    ("https://www.paginegialle.it/abruzzo/case-cura-e-cliniche-private.html", "CLINICHE", "ABRUZZO"),
+    
+    # LABORATORI DI ANALISI (Spesso hanno medici specialisti come direttori)
+    ("https://www.paginegialle.it/abruzzo/laboratori-analisi-cliniche.html", "LABORATORI", "ABRUZZO")
 ]
 
 # --- 3. ESECUZIONE ---
-accumulo = []
+risultati_finali = []
 for url, cat, prov in targets:
-    accumulo.extend(cerca_lead_sanita(url, cat, prov))
+    risultati_finali.extend(cerca_lead_chirurgico(url, cat, prov))
 
-if accumulo:
+if risultati_finali:
     email_esistenti = set(sheet.col_values(3))
-    finali = [a for a in accumulo if a[2] not in email_esistenti]
-    if finali:
-        sheet.append_rows(finali)
-        print(f"Trovati {len(finali)} nuovi invitati per il convegno!")
+    da_scrivere = [r for r in risultati_finali if r[2] not in email_esistenti]
+    if da_scrivere:
+        sheet.append_rows(da_scrivere)
+        print(f"Aggiunti {len(da_scrivere)} nuovi contatti medici!")
