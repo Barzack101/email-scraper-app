@@ -5,8 +5,6 @@ import requests
 import re
 import time
 from datetime import datetime
-from urllib.parse import urljoin
-from bs4 import BeautifulSoup
 from google.oauth2.service_account import Credentials
 
 # --- 1. CONFIGURAZIONE ---
@@ -17,60 +15,50 @@ client = gspread.authorize(creds)
 NOME_FOGLIO = "ricerca_mail_categoria_sanita'"
 sheet = client.open(NOME_FOGLIO).sheet1
 
-def cerca_email_profondo(url_base, categoria, provincia):
-    print(f"Investigando {categoria} a {provincia}...")
-    trovate = set()
-    headers = {'User-Agent': 'Mozilla/5.0'}
+def cerca_lead_sanita(url, categoria, provincia):
+    print(f"Rastrellamento intensivo: {categoria} a {provincia}...")
+    nuovi_scovati = []
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     try:
-        res = requests.get(url_base, headers=headers, timeout=20)
-        soup = BeautifulSoup(res.text, 'html.parser')
+        res = requests.get(url, headers=headers, timeout=25)
+        # Cerchiamo blocchi di testo che contengono email
+        emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', res.text)
         
-        # 1. Cerca nella pagina principale
-        trovate.update(re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', res.text))
-        
-        # 2. Trova link interni (Albo, Iscritti, Contatti)
-        links = []
-        parole_chiave = ['albo', 'iscritti', 'elenco', 'contatt', 'anagrafica', 'specialisti']
-        for a in soup.find_all('a', href=True):
-            if any(p in a.text.lower() for p in parole_chiave) or any(p in a['href'].lower() for p in parole_chiave):
-                links.append(urljoin(url_base, a['href']))
-        
-        # 3. Scansiona le prime 15 sottopagine trovate
-        for link in list(set(links))[:15]:
-            try:
-                sub_res = requests.get(link, headers=headers, timeout=10)
-                trovate.update(re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', sub_res.text))
-                time.sleep(0.5)
-            except: continue
-    except: pass
-    
-    risultati_finali = []
-    for email in trovate:
-        if not email.endswith(('.png', '.jpg', '.pdf', '.gif', '.svg')):
-            nome = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-            risultati_finali.append([datetime.now().strftime("%d/%m/%Y"), nome, email.lower(), categoria, provincia])
-    return risultati_finali
+        for email in list(set(emails)):
+            if not email.endswith(('.png', '.jpg', '.pdf', '.gif', '.svg')):
+                # Creiamo Nome e Cognome dall'email
+                nome_proposta = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+                nuovi_scovati.append([datetime.now().strftime("%d/%m/%Y"), nome_proposta, email.lower(), categoria, provincia])
+    except:
+        pass
+    return nuovi_scovati
 
-# --- 2. BERSAGLI (Aggiornati per massimizzare i risultati) ---
+# --- 2. BERSAGLI AD ALTA DENSITÀ (Portali di Ricerca) ---
 targets = [
-    ("https://www.ordinemedicipescara.it", "Medici", "PESCARA"),
-    ("https://www.ordinemedicichieti.it", "Medici", "CHIETI"),
-    ("https://www.ordinemediciteramo.it", "Medici", "TERAMO"),
-    ("https://www.ordinemedicilaquila.it", "Medici", "L'AQUILA"),
-    ("https://www.ordinemediciveterinaripe.it", "Veterinari", "PESCARA"),
-    ("https://www.ordinefarmacistipescara.it", "Farmacisti", "PESCARA"),
-    ("https://www.paginegialle.it/abruzzo/medici-specialisti.html", "Specialisti", "ABRUZZO"),
-    ("https://www.paginegialle.it/abruzzo/farmacie.html", "Farmacie", "ABRUZZO")
+    # ELENCHI SPECIALISTI ABRUZZO
+    ("https://www.paginegialle.it/abruzzo/medici-specialisti.html", "SPECIALISTI", "ABRUZZO"),
+    ("https://www.paginegialle.it/pescara/medici-specialisti.html", "SPECIALISTI", "PESCARA"),
+    ("https://www.paginegialle.it/chieti/medici-specialisti.html", "SPECIALISTI", "CHIETI"),
+    ("https://www.paginegialle.it/teramo/medici-specialisti.html", "SPECIALISTI", "TERAMO"),
+    ("https://www.paginegialle.it/laquila/medici-specialisti.html", "SPECIALISTI", "L'AQUILA"),
+    
+    # FARMACIE E PEDIATRI (Molto facili da trovare)
+    ("https://www.paginegialle.it/abruzzo/farmacie.html", "FARMACIE", "ABRUZZO"),
+    ("https://www.paginegialle.it/abruzzo/pediatri.html", "PEDIATRI", "ABRUZZO"),
+    
+    # CLINICHE E CENTRI MEDICI (Contengono decine di specialisti ciascuno)
+    ("https://www.paginegialle.it/abruzzo/centri-medici.html", "CENTRI MEDICI", "ABRUZZO"),
+    ("https://www.paginegialle.it/pescara/cliniche-private.html", "CLINICHE", "PESCARA")
 ]
 
 # --- 3. ESECUZIONE ---
-nuovi = []
+accumulo = []
 for url, cat, prov in targets:
-    nuovi.extend(cerca_email_profondo(url, cat, prov))
+    accumulo.extend(cerca_lead_sanita(url, cat, prov))
 
-if nuovi:
+if accumulo:
     email_esistenti = set(sheet.col_values(3))
-    da_inserire = [n for n in nuovi if n[2] not in email_esistenti]
-    if da_inserire:
-        sheet.append_rows(da_inserire)
-        print(f"Boom! Trovati {len(da_inserire)} nuovi contatti.")
+    finali = [a for a in accumulo if a[2] not in email_esistenti]
+    if finali:
+        sheet.append_rows(finali)
+        print(f"Trovati {len(finali)} nuovi invitati per il convegno!")
