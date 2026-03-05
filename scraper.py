@@ -1,60 +1,57 @@
 import os
-import json
-import gspread
 import requests
 import re
+import gspread
 import time
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 
-# --- CONFIGURAZIONE ---
+# --- CONFIGURAZIONE GOOGLE SHEETS ---
 creds_json = os.getenv('GOOGLE_CREDENTIALS')
-info = json.loads(creds_json)
-creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
+creds = Credentials.from_service_account_info(json.loads(creds_json), 
+        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
 sheet = client.open("ricerca_mail_categoria_sanita'").sheet1
 
-def estrai_da_documento(url, cat, prov):
-    print(f"Scansione database ufficiale: {prov}...")
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
+
+def trova_email_da_nome(nome_completo):
+    """Cerca su Google l'email associata al nome del medico"""
+    print(f"Cercando email per: {nome_completo}...")
+    query = f'"{nome_completo}" medico Abruzzo email'
+    search_url = f"https://www.google.com/search?q={query}"
+    
     try:
-        res = requests.get(url, headers=headers, timeout=25)
-        # Cerchiamo le email nei documenti (spesso sono scritte in chiaro nel codice sorgente)
+        res = requests.get(search_url, headers=HEADERS, timeout=10)
+        # Cerchiamo pattern email nel testo dei risultati di ricerca
         emails = re.findall(r'[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,4}', res.text)
         
-        trovate = []
-        for e in set(emails):
-            e = e.lower()
-            if not any(x in e for x in ['aruba', 'pec', 'legalmail', 'webmaster']):
-                nome = e.split('@')[0].replace('.', ' ').title()
-                trovate.append([datetime.now().strftime("%d/%m/%Y"), nome, e, cat, prov])
-        return trovate
-    except: return []
+        for email in set(emails):
+            email = email.lower()
+            if not any(x in email for x in ['aruba', 'pec', 'legalmail', 'google', 'sentry']):
+                return email
+    except:
+        pass
+    return None
 
-# BERSAGLI: LISTE UFFICIALI (Dove i medici sono elencati per obbligo di legge)
-targets = [
-    # Portale Sanità Regione Abruzzo (Tutte le categorie della foto)
-    ("https://sanita.regione.abruzzo.it/canale-medici", "PERSONALE CONVENZIONATO", "ABRUZZO"),
-    ("https://sanita.regione.abruzzo.it/index.php/pagine/personale-dipendente", "SPECIALISTI", "ABRUZZO"),
-    # Liste ASL specifiche
-    ("https://www.asl1abruzzo.it/index.php/medici-e-pediatri", "MEDICINA GENERALE", "L'AQUILA"),
-    ("https://www.asl2abruzzo.it/area-riservata/servizi-online.html", "SPECIALISTI", "CHIETI"),
-    ("https://www.aslteramo.it/servizi/medici-e-pediatri-di-famiglia/", "MEDICI DI BASE", "TERAMO"),
-    # Liste PDF (Cerca stringhe email in pagine che linkano PDF pesanti)
-    ("https://www.ordinemedicichieti.it/iscritti", "ALBO", "CHIETI"),
-    ("https://omceo.te.it/uffici", "ALBO", "TERAMO")
+# --- I NOMI ESTRATTI DAL TUO PDF ---
+# Puoi aggiungere tutti i nomi che vuoi in questa lista
+nomi_da_cercare = [
+    "Pier Luigi Cariello", "Margherita Angelucci", "Fabiana Cecchini",
+    "Giulia Maria D'Ambrosio", "Valentina Di Fabio", "Serena Di Filippo"
 ]
 
-# ESECUZIONE
-dati_finali = []
-for url, cat, prov in targets:
-    dati_finali.extend(estrai_da_documento(url, cat, prov))
-
-if dati_finali:
-    email_esistenti = set(sheet.col_values(3))
-    da_inviare = [d for d in dati_finali if d[2] not in email_esistenti]
-    if da_inviare:
-        print(f"Sbloccati {len(da_inviare)} nuovi contatti ufficiali!")
-        sheet.append_rows(da_inviare)
+# --- ESECUZIONE ---
+nuovi_contatti = []
+for nome in nomi_da_cercare:
+    email = trova_email_da_nome(nome)
+    if email:
+        print(f"✅ TROVATA: {email}")
+        nuovi_contatti.append([datetime.now().strftime("%d/%m/%Y"), nome, email, "SPECIALISTA", "ABRUZZO"])
     else:
-        print("Il bot non riesce a leggere oltre. Passiamo al piano manuale per i PDF.")
+        print(f"❌ Non trovata per {nome}")
+    time.sleep(2) # Pausa per non farci bloccare da Google
+
+if nuovi_contatti:
+    sheet.append_rows(nuovi_contatti)
+    print(f"Aggiunti {len(nuovi_contatti)} contatti mirati!")
