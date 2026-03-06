@@ -1,13 +1,12 @@
 import os
 import json
-import gspread
 import requests
 import re
 import time
 import random
 import io
 from datetime import datetime
-from google.oauth2.service_account import Credentials
+from openpyxl import Workbook
 
 try:
     from selenium import webdriver
@@ -21,27 +20,6 @@ try:
     PDF_OK = True
 except ImportError:
     PDF_OK = False
-
-creds_json = os.getenv('GOOGLE_CREDENTIALS')
-info = json.loads(creds_json)
-creds = Credentials.from_service_account_info(info, scopes=[
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-])
-client = gspread.authorize(creds)
-
-NOME_FOGLIO_NUOVO = f"email_sanitari_{datetime.now().strftime('%d%m%Y')}"
-try:
-    spreadsheet = client.open(NOME_FOGLIO_NUOVO)
-    sheet = spreadsheet.sheet1
-    print(f"Foglio aperto: {NOME_FOGLIO_NUOVO}")
-except:
-    spreadsheet = client.create(NOME_FOGLIO_NUOVO)
-    sheet = spreadsheet.sheet1
-    sheet.append_row(['Data', 'Nome', 'Email', 'Specializzazione', 'Provincia'])
-    spreadsheet.share('', perm_type='anyone', role='reader')
-    print(f"Foglio creato: {NOME_FOGLIO_NUOVO}")
-    print(f"Link: https://docs.google.com/spreadsheets/d/{spreadsheet.id}")
 
 SPECIALIZZAZIONI = {
     'allergologia':         'Allergologia ed Immunologia Clinica',
@@ -360,14 +338,14 @@ for label in SPECIALIZZAZIONI.values():
     c = sum(1 for r in dati_finali if r[3] == label)
     if c > 0: print(f'  {label}: {c}')
 
-if dati_finali:
-    esistenti = set(sheet.col_values(3))
-    da_inviare = [d for d in dati_finali if d[2] not in esistenti]
-    for i in range(0, len(da_inviare), 50):
-        sheet.append_rows(da_inviare[i:i+50])
-        time.sleep(1)
-    print(f'\nFATTO! Aggiunti {len(da_inviare)} contatti.')
-    print(f'Foglio: https://docs.google.com/spreadsheets/d/{spreadsheet.id}')
-else:
-    print('\nNessuna email trovata.')
-    print(f'Foglio vuoto: https://docs.google.com/spreadsheets/d/{spreadsheet.id}')
+# Salva come Excel
+nome_file = f"risultati_{datetime.now().strftime('%d%m%Y_%H%M')}.xlsx"
+wb = Workbook()
+ws = wb.active
+ws.title = "Email Sanitari"
+ws.append(['Data', 'Nome', 'Email', 'Specializzazione', 'Provincia'])
+for riga in dati_finali:
+    ws.append(riga)
+wb.save(nome_file)
+print(f'\nFile salvato: {nome_file}')
+print(f'TOTALE RIGHE: {len(dati_finali)}')
