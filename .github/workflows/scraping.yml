@@ -19,7 +19,7 @@ jobs:
 
       - name: Installa dipendenze
         run: |
-          pip install gspread google-auth requests selenium pdfplumber
+          pip install requests selenium pdfplumber openpyxl
 
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1
