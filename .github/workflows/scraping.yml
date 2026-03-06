@@ -31,4 +31,4 @@ jobs:
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: |
-          python ricerca_specializzazioni.py
+          python scraper.py
