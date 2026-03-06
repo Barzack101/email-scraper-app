@@ -1,3 +1,6 @@
+import subprocess
+import sys
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'openpyxl', 'pdfplumber', 'selenium', 'requests'])
 import os
 import json
 import requests
