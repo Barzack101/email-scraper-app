@@ -1,25 +1,40 @@
 name: Run Email Scraper
 
 on:
-  workflow_dispatch: # Questo crea il tasto per farlo partire a mano!
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 300
+
     steps:
       - name: Checkout codice
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
       - name: Installa librerie
-        run: |
-          pip install gspread google-auth requests beautifulsoup4
+        run: pip install requests selenium pdfplumber openpyxl
+
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Setup ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
 
       - name: Avvia lo script
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python scraper.py
+
+      - name: Scarica file Excel
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: email-sanitari-abruzzo
+          path: "*.xlsx"
+          retention-days: 30
