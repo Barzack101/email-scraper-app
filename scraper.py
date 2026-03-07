@@ -1,16 +1,40 @@
 import os, re, time, random
 import requests
 import pdfplumber
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
 
-print("File nella cartella:")
-for f in os.listdir('.'):
-    print(f' - {f}')
-print("Inizio script...")
+SNOV_CLIENT_ID = os.getenv('SNOV_CLIENT_ID', '')
+SNOV_CLIENT_SECRET = os.getenv('SNOV_CLIENT_SECRET', '')
 
-HUNTER_API_KEY = os.getenv('HUNTER_API_KEY', '')
+def get_snov_token():
+    try:
+        res = requests.post('https://api.snov.io/v1/oauth/access_token', data={
+            'grant_type': 'client_credentials',
+            'client_id': SNOV_CLIENT_ID,
+            'client_secret': SNOV_CLIENT_SECRET
+        }, timeout=10)
+        return res.json().get('access_token')
+    except Exception as e:
+        print(f'Errore token Snov: {e}')
+        return None
+
+def cerca_email_snov(nome, cognome, token):
+    if not token: return None
+    try:
+        res = requests.post('https://api.snov.io/v1/get-emails-from-name', json={
+            'firstName': nome,
+            'lastName': cognome,
+            'domain': 'gmail.com'
+        }, headers={'Authorization': f'Bearer {token}'}, timeout=15)
+        data = res.json()
+        emails = data.get('emails', [])
+        if emails:
+            return emails[0].get('email')
+    except Exception as e:
+        print(f'    Snov error: {e}')
+    return None
 
 SPECIALIZZAZIONI_PDF = [
     'ALLERGOLOGIA', 'AUDIOLOGIA E FONATRIA', 'BIOLOGIA', 'CARDIOLOGIA',
@@ -36,87 +60,6 @@ SKIP_WORDS = [
     'UFFICIALE', 'DICEMBRE', 'GENNAIO', 'FEBBRAIO', 'MARZO', 'APRILE',
 ]
 
-# Domini medici italiani comuni
-DOMINI_MEDICI = [
-    'gmail.com', 'libero.it', 'yahoo.it', 'hotmail.it',
-    'alice.it', 'virgilio.it', 'tiscali.it', 'fastwebnet.it',
-    'omceope.it', 'omceochieti.it', 'omceoteramo.it', 'omceoaq.it',
-    'aslpe.it', 'asl2abruzzo.it', 'asl1abruzzo.it', 'aslteramo.it',
-]
-
-def cerca_email_hunter(nome, cognome):
-    """Cerca email tramite Hunter.io Email Finder"""
-    if not HUNTER_API_KEY:
-        return None, None
-    try:
-        url = 'https://api.hunter.io/v2/email-finder'
-        params = {
-            'first_name': nome,
-            'last_name': cognome,
-            'domain': 'gmail.com',
-            'api_key': HUNTER_API_KEY
-        }
-        res = requests.get(url, params=params, timeout=15)
-        data = res.json()
-        if data.get('data', {}).get('email'):
-            email = data['data']['email']
-            score = data['data'].get('score', 0)
-            return email, score
-    except Exception as e:
-        print(f'    Hunter error: {e}')
-    return None, None
-
-def cerca_email_hunter_domini(nome, cognome):
-    """Prova più domini con Hunter.io"""
-    if not HUNTER_API_KEY:
-        return None
-    
-    # Prova prima con domini ASL/ordini
-    domini_da_provare = [
-        'aslpe.it', 'asl2abruzzo.it', 'asl1abruzzo.it', 'aslteramo.it',
-        'gmail.com', 'libero.it', 'yahoo.it'
-    ]
-    
-    for dominio in domini_da_provare:
-        try:
-            url = 'https://api.hunter.io/v2/email-finder'
-            params = {
-                'first_name': nome,
-                'last_name': cognome,
-                'domain': dominio,
-                'api_key': HUNTER_API_KEY
-            }
-            res = requests.get(url, params=params, timeout=15)
-            data = res.json()
-            if data.get('data', {}).get('email'):
-                score = data['data'].get('score', 0)
-                if score >= 50:  # Solo email con buona affidabilità
-                    return data['data']['email']
-        except:
-            pass
-        time.sleep(0.5)
-    return None
-
-def controlla_crediti_hunter():
-    """Controlla quanti crediti Hunter.io rimangono"""
-    if not HUNTER_API_KEY:
-        return 0
-    try:
-        res = requests.get(
-            'https://api.hunter.io/v2/account',
-            params={'api_key': HUNTER_API_KEY},
-            timeout=10
-        )
-        data = res.json()
-        requests_left = data.get('data', {}).get('requests', {}).get('searches', {}).get('available', 0)
-        print(f'Crediti Hunter.io disponibili: {requests_left}')
-        return requests_left
-    except:
-        return 0
-
-# ============================================================
-# STEP 1: Estrai medici dal PDF
-# ============================================================
 print('='*60)
 print('STEP 1: Estrazione medici dal PDF ufficiale')
 print('='*60)
@@ -126,9 +69,7 @@ seen = set()
 current_spec = None
 current_asl = 'PESCARA'
 
-pdf_path = 'bollettino-speciale-numero-288-del-31-12-2025.pdf'
-
-with pdfplumber.open(pdf_path) as pdf:
+with pdfplumber.open('bollettino-speciale-numero-288-del-31-12-2025.pdf') as pdf:
     for page_num, page in enumerate(pdf.pages):
         words = page.extract_words()
         text = ' '.join([w['text'] for w in words])
@@ -171,15 +112,12 @@ with pdfplumber.open(pdf_path) as pdf:
 
 print(f'Estratti {len(medici_pdf)} medici dal PDF')
 
-# ============================================================
-# STEP 2: Cerca email con Hunter.io
-# ============================================================
 print('\n' + '='*60)
-print('STEP 2: Ricerca email con Hunter.io')
+print('STEP 2: Ricerca email con Snov.io')
 print('='*60)
 
-crediti = controlla_crediti_hunter()
-print(f'Crediti disponibili: {crediti}')
+token = get_snov_token()
+print(f'Token Snov: {"OK" if token else "ERRORE"}')
 
 risultati = []
 trovate_count = 0
@@ -188,27 +126,21 @@ for i, medico in enumerate(medici_pdf):
     nome_completo = medico['nome']
     spec = medico['specializzazione']
     asl = medico['asl']
-    
-    # Separa nome e cognome
+
     parole = nome_completo.split()
     cognome = parole[0]
     nome = ' '.join(parole[1:]) if len(parole) > 1 else parole[0]
-    
+
     print(f'[{i+1}/{len(medici_pdf)}] {nome_completo} - {spec}', end=' ... ')
-    
-    email = None
-    
-    if crediti > 5:
-        email = cerca_email_hunter_domini(nome, cognome)
-        if email:
-            trovate_count += 1
-            crediti -= 1
-            print(f'TROVATA: {email}')
-        else:
-            print('non trovata')
+
+    email = cerca_email_snov(nome, cognome, token)
+
+    if email:
+        trovate_count += 1
+        print(f'TROVATA: {email}')
     else:
-        print('crediti esauriti')
-    
+        print('non trovata')
+
     risultati.append({
         'nome': nome_completo,
         'email': email or '',
@@ -216,17 +148,14 @@ for i, medico in enumerate(medici_pdf):
         'provincia': asl,
         'fonte': 'Bollettino Ufficiale Regione Abruzzo 2026'
     })
-    
-    time.sleep(0.3)
-    
+
+    time.sleep(0.5)
+
     if (i + 1) % 50 == 0:
         print(f'\n>>> Checkpoint: {trovate_count} email trovate su {i+1} medici\n')
 
 print(f'\nEmail trovate: {trovate_count}/{len(medici_pdf)}')
 
-# ============================================================
-# STEP 3: Crea Excel finale
-# ============================================================
 print('\n' + '='*60)
 print('STEP 3: Creazione Excel finale')
 print('='*60)
