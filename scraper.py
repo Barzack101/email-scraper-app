@@ -3,6 +3,7 @@
 import os, re, time, random
 import requests
 import pdfplumber
+
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
@@ -10,6 +11,12 @@ from datetime import datetime
 try:
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
+    # DEBUG
+import os
+print("File nella cartella:")
+for f in os.listdir('.'):
+    print(f' - {f}')
+print("Inizio script...")
     SELENIUM_OK = True
 except:
     SELENIUM_OK = False
