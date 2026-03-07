@@ -1,102 +1,34 @@
 import subprocess, sys
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'openpyxl', 'pdfplumber', 'requests'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 
+    'openpyxl', 'pdfplumber', 'requests', 'selenium'], 
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-import os, requests, re, time, random, io
-from datetime import datetime
-from openpyxl import Workbook
+import os, re, time, random
+import requests
+import pdfplumber
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+from datetime import datetime
 
 try:
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
     SELENIUM_OK = True
-except ImportError:
+except:
     SELENIUM_OK = False
-
-try:
-    import pdfplumber
-    PDF_OK = True
-except ImportError:
-    PDF_OK = False
-
-SPECIALIZZAZIONI = {
-    'allergologia':         'Allergologia ed Immunologia Clinica',
-    'dermatologia':         'Dermatologia e Venerologia',
-    'gastroenterologia':    'Gastroenterologia',
-    'respiratorio':         "Malattie dell'Apparato Respiratorio",
-    'medicina interna':     'Medicina Interna',
-    'pediatria':            'Pediatria',
-    'reumatologia':         'Reumatologia',
-    'cardiochirurgia':      'Cardiochirurgia',
-    'chirurgia generale':   'Chirurgia Generale',
-    'otorinolaringoiatria': 'Otorinolaringoiatria',
-    'anatomia patologica':  'Anatomia Patologica',
-    'medicina del lavoro':  'Medicina del Lavoro e Sicurezza',
-    'medico di famiglia':   'Medicina Generale (Medici di Famiglia)',
-    'direzione medica':     'Direzione Medica di Presidio Ospedaliero',
-    'medicina comunita':    'Medicina di Comunita e Cure Primarie',
-    'farmacista':           'Farmacista',
-}
-
-SPEC_KEYWORDS = {
-    'allergologia':         ['allergolog', 'immunolog', 'allergia'],
-    'dermatologia':         ['dermatolog', 'venerolog'],
-    'gastroenterologia':    ['gastroenterolog', 'gastroentero'],
-    'respiratorio':         ['respirator', 'pneumolog', 'polmonare'],
-    'medicina interna':     ['medicina interna', 'internista'],
-    'pediatria':            ['pediatr'],
-    'reumatologia':         ['reumatolog'],
-    'cardiochirurgia':      ['cardiochirurg'],
-    'chirurgia generale':   ['chirurgia generale', 'chirurgo generale'],
-    'otorinolaringoiatria': ['otorinolaringoiatr', 'orl', 'otorino'],
-    'anatomia patologica':  ['anatomia patologica', 'patologo'],
-    'medicina del lavoro':  ['medicina del lavoro', 'medico del lavoro'],
-    'medico di famiglia':   ['medico di famiglia', 'medicina generale', 'mmg'],
-    'direzione medica':     ['direttore medico', 'direzione medica'],
-    'medicina comunita':    ['cure primarie', 'medicina territorio'],
-    'farmacista':           ['farmacist', 'farmacia'],
-}
-
-PROVINCE = {
-    'pescara': 'PESCARA',
-    'chieti': 'CHIETI',
-    'teramo': 'TERAMO',
-    "l'aquila": "L'AQUILA",
-    'lanciano': 'CHIETI',
-    'vasto': 'CHIETI',
-    'avezzano': "L'AQUILA",
-    'sulmona': "L'AQUILA",
-}
 
 USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
 ]
 
-def get_headers():
-    return {
-        'User-Agent': random.choice(USER_AGENTS),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'it-IT,it;q=0.9',
-        'Referer': 'https://www.google.it/',
-    }
-
-def pausa(min=1.5, max=3.5):
-    time.sleep(random.uniform(min, max))
-
 EMAIL_PATTERN = r'[a-zA-Z0-9.\-_+]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,6}'
-
 DOMINI_ESCLUDI = [
-    'example.com','noreply','no-reply','privacy@','dpo@','webmaster',
-    'sentry.io','w3.org','schema.org','googleapis','jquery','bootstrap',
-    'cloudflare','facebook','twitter','youtube','google.com','microsoft',
-    'apple.com','wix.com','wordpress','jsdelivr','cdnjs','fontawesome',
-    'sitemaps','robots','sitemap','test@','admin@',
+    'example.com','noreply','no-reply','privacy','dpo@','webmaster','sentry',
+    'w3.org','schema.org','googleapis','jquery','bootstrap','cloudflare',
+    'facebook','twitter','youtube','google.','microsoft','apple.com','wix',
+    'wordpress','jsdelivr','cdnjs','fontawesome','gstatic','doubleclick',
 ]
 
 def is_email_valida(email):
@@ -107,30 +39,6 @@ def is_email_valida(email):
     if el.count('@') != 1: return False
     return True
 
-def rileva_specializzazione(testo):
-    tl = testo.lower()
-    for chiave, kws in SPEC_KEYWORDS.items():
-        if any(kw in tl for kw in kws):
-            return chiave
-    return None
-
-def estrai_email_con_spec(testo, provincia, spec_forzata=None):
-    trovate = []
-    for match in re.finditer(EMAIL_PATTERN, testo):
-        email = match.group().lower().strip('.')
-        if not is_email_valida(email): continue
-        if spec_forzata:
-            spec = spec_forzata
-        else:
-            contesto = testo[max(0,match.start()-500):match.end()+500]
-            spec = rileva_specializzazione(contesto)
-        if spec:
-            nome = email.split('@')[0].replace('.',' ').replace('_',' ').replace('-',' ').title()
-            r = [datetime.now().strftime('%d/%m/%Y'), nome, email,
-                 SPECIALIZZAZIONI[spec], provincia.upper()]
-            if r not in trovate: trovate.append(r)
-    return trovate
-
 def crea_browser():
     if not SELENIUM_OK: return None
     options = Options()
@@ -139,7 +47,6 @@ def crea_browser():
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_experimental_option('excludeSwitches', ['enable-automation'])
-    options.add_experimental_option('useAutomationExtension', False)
     options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
     options.add_argument('--window-size=1920,1080')
     try:
@@ -150,309 +57,263 @@ def crea_browser():
         print(f'Browser non disponibile: {e}')
         return None
 
-def scarica(url, driver=None, usa_selenium=False):
-    if usa_selenium and driver:
-        try:
-            driver.get(url)
-            time.sleep(3)
-            return driver.page_source
-        except: return ''
-    try:
-        res = requests.Session().get(url, headers=get_headers(), timeout=25)
-        if res.status_code in (403, 429, 503) and driver:
-            driver.get(url)
-            time.sleep(3)
-            return driver.page_source
-        if res.status_code == 200:
-            return res.text
-        return ''
-    except Exception as e:
-        print(f'    Errore scarica: {e}')
-        return ''
-
-def scarica_pdf(url):
-    if not PDF_OK: return ''
-    try:
-        res = requests.get(url, headers=get_headers(), timeout=30)
-        if res.status_code != 200: return ''
-        with pdfplumber.open(io.BytesIO(res.content)) as pdf:
-            testo = ''
-            for pagina in pdf.pages:
-                t = pagina.extract_text()
-                if t: testo += t + '\n'
-        return testo
-    except Exception as e:
-        print(f'    Errore PDF: {e}')
-        return ''
-
-# ============================================================
-# FONTE 1: INI-PEC (Registro pubblico PEC - fonte ufficiale)
-# ============================================================
-def scrapa_inipec(driver=None):
-    trovate = []
-    print('\n  Ricerca su INI-PEC...')
-    categorie = [
-        ('medico chirurgo', 'medico di famiglia'),
-        ('farmacista', 'farmacista'),
-        ('medico specialista', 'medicina interna'),
-    ]
-    province_codici = ['PE', 'CH', 'TE', 'AQ']
-    for cat, spec_chiave in categorie:
-        for prov in province_codici:
-            url = f'https://www.inipec.gov.it/cerca-pec/-/pec/professionisti?categoria={cat.replace(" ","+")}&provincia={prov}'
-            print(f'    INI-PEC: {cat} - {prov}')
-            t = scarica(url, driver=driver, usa_selenium=True)
-            if not t: pausa(); continue
-            for r in estrai_email_con_spec(t, prov, spec_chiave):
-                if r not in trovate: trovate.append(r)
-            pausa()
-    return trovate
-
-# ============================================================
-# FONTE 2: FNOMCeO - Albo medici ufficiale
-# ============================================================
-def scrapa_fnomceo(driver=None):
-    trovate = []
-    print('\n  Ricerca su FNOMCeO...')
-    province = ['Pescara', 'Chieti', 'Teramo', "L'Aquila"]
-    for prov in province:
-        url = f'https://portale.fnomceo.it/trova-medico/?provincia={prov}'
-        print(f'    FNOMCeO: {prov}')
-        t = scarica(url, driver=driver, usa_selenium=True)
-        if not t: pausa(); continue
-        for r in estrai_email_con_spec(t, prov):
-            if r not in trovate: trovate.append(r)
-        pausa()
-    return trovate
-
-# ============================================================
-# FONTE 3: Dottori.it
-# ============================================================
-def scrapa_dottori(spec_chiave, prov, driver=None):
-    trovate = []
-    termine = SPEC_KEYWORDS[spec_chiave][0].replace(' ', '-')
-    p = prov.replace("'", '-').replace(' ', '-').lower()
-    for pagina in range(1, 6):
-        url = f'https://www.dottori.it/{termine}/{p}/?page={pagina}'
-        print(f'    Dottori.it: {SPECIALIZZAZIONI[spec_chiave]} - {prov} p.{pagina}')
-        t = scarica(url, driver=driver, usa_selenium=True)
-        if not t: break
-        agg = 0
-        for email in set(re.findall(EMAIL_PATTERN, t)):
-            email = email.lower().strip('.')
-            if is_email_valida(email):
-                nome = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-                r = [datetime.now().strftime('%d/%m/%Y'), nome, email,
-                     SPECIALIZZAZIONI[spec_chiave], prov.upper()]
-                if r not in trovate: trovate.append(r); agg += 1
-        print(f'      +{agg} email')
-        if agg == 0 and pagina > 2: break
-        pausa()
-    return trovate
-
-# ============================================================
-# FONTE 4: MioDottore
-# ============================================================
-def scrapa_miodottore(spec_chiave, prov, driver=None):
-    if not driver: return []
-    trovate = []
-    termine = SPEC_KEYWORDS[spec_chiave][0].replace(' ', '-')
-    p = prov.replace("'", '-').replace(' ', '-').lower()
-    for pagina in range(1, 6):
-        url = f'https://www.miodottore.it/{termine}/{p}?page={pagina}'
-        print(f'    MioDottore: {SPECIALIZZAZIONI[spec_chiave]} - {prov} p.{pagina}')
-        t = scarica(url, driver=driver, usa_selenium=True)
-        if not t: break
-        agg = 0
-        for email in set(re.findall(EMAIL_PATTERN, t)):
-            email = email.lower().strip('.')
-            if is_email_valida(email):
-                nome = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-                r = [datetime.now().strftime('%d/%m/%Y'), nome, email,
-                     SPECIALIZZAZIONI[spec_chiave], prov.upper()]
-                if r not in trovate: trovate.append(r); agg += 1
-        print(f'      +{agg} email')
-        if agg == 0 and pagina > 2: break
-        pausa()
-    return trovate
-
-# ============================================================
-# FONTE 5: Google Maps (studi medici con email pubblica)
-# ============================================================
-def scrapa_google_maps(spec_chiave, prov, driver=None):
-    if not driver: return []
-    trovate = []
-    termine = SPEC_KEYWORDS[spec_chiave][0]
-    query = f'{termine} {prov} abruzzo'
-    url = f'https://www.google.com/maps/search/{query.replace(" ", "+")}'
-    print(f'    Google Maps: {termine} - {prov}')
+def cerca_email_google(nome, specializzazione, provincia, driver):
+    if not driver: return None
+    query = f'"{nome}" {specializzazione.lower()} {provincia.lower()} email contatti'
+    url = f'https://www.google.com/search?q={query.replace(" ", "+")}'
     try:
         driver.get(url)
-        time.sleep(4)
-        t = driver.page_source
-        for r in estrai_email_con_spec(t, prov, spec_chiave):
-            if r not in trovate: trovate.append(r)
+        time.sleep(random.uniform(3, 5))
+        testo = driver.page_source
+        emails = re.findall(EMAIL_PATTERN, testo)
+        for email in emails:
+            email = email.lower().strip('.')
+            if is_email_valida(email):
+                return email
     except Exception as e:
-        print(f'      Errore Maps: {e}')
-    pausa()
-    return trovate
+        print(f'    Errore Google: {e}')
+    return None
+
+def cerca_email_sito(nome, specializzazione, provincia, driver):
+    if not driver: return None
+    urls = [
+        f'https://www.dottori.it/cerca?q={nome.replace(" ", "+")}&city={provincia.lower()}',
+        f'https://www.miodottore.it/cerca?q={nome.replace(" ", "+")}',
+    ]
+    for url in urls:
+        try:
+            driver.get(url)
+            time.sleep(random.uniform(2, 4))
+            testo = driver.page_source
+            if nome.split()[0].lower() in testo.lower():
+                emails = re.findall(EMAIL_PATTERN, testo)
+                for email in emails:
+                    email = email.lower().strip('.')
+                    if is_email_valida(email):
+                        return email
+        except:
+            pass
+    return None
 
 # ============================================================
-# FONTE 6: Siti ordini provinciali e ASL
+# STEP 1: Estrai medici dal PDF
 # ============================================================
-SITI_UFFICIALI = [
-    ('https://www.omceope.it', 'PESCARA'),
-    ('https://www.omceochieti.it', 'CHIETI'),
-    ('https://www.omceoteramo.it', 'TERAMO'),
-    ('https://www.omceoaq.it', "L'AQUILA"),
-    ('https://www.aslpe.it', 'PESCARA'),
-    ('https://www.asl2abruzzo.it', 'CHIETI'),
-    ('https://www.asl1abruzzo.it', "L'AQUILA"),
-    ('https://www.aslteramo.it', 'TERAMO'),
-    ('https://www.sanita.regione.abruzzo.it', 'ABRUZZO'),
-    ('https://www.farmacistiabruzzo.it', 'ABRUZZO'),
-    ('https://www.ordinefarmacistipescara.it', 'PESCARA'),
-    ('https://www.ordinefarmacistichieti.it', 'CHIETI'),
+print('='*60)
+print('STEP 1: Estrazione medici dal PDF ufficiale')
+print('='*60)
+
+SPECIALIZZAZIONI_PDF = [
+    'ALLERGOLOGIA', 'AUDIOLOGIA E FONATRIA', 'BIOLOGIA', 'CARDIOLOGIA',
+    'CHIRURGIA GENERALE', 'CHIRURGIA PLASTICA', 'CHIRURGIA VASCOLARE',
+    'DERMATOLOGIA', 'DIABETOLOGIA', 'EMATOLOGIA', 'ENDOCRINOLOGIA',
+    'FISIOCHINESITERAPIA', 'GASTROENTEROLOGIA', 'GERIATRIA',
+    'MEDICINA DEL LAVORO', 'MEDICINA DELLO SPORT', 'MEDICINA INTERNA',
+    'MEDICINA LEGALE', 'NEFROLOGIA', 'NEUROLOGIA', 'NEUROPSICHIATRIA INFANTILE',
+    'OCULISTICA', 'ODONTOIATRIA', 'ORTOPEDIA', 'OSTETRICIA E GINECOLOGIA',
+    'OTORINOLARINGOIATRIA', 'PEDIATRIA', 'PNEUMOLOGIA', 'PSICHIATRIA',
+    'RADIOLOGIA', 'REUMATOLOGIA', 'UROLOGIA', 'ONCOLOGIA',
+    'ANESTESIA', 'ANATOMIA PATOLOGICA', 'PSICOLOGIA'
 ]
 
-PDF_UFFICIALI = [
-    ('https://www.omceope.it/albo/elenco_iscritti.pdf', 'PESCARA'),
-    ('https://www.omceochieti.it/albo/iscritti.pdf', 'CHIETI'),
-    ('https://www.omceoteramo.it/albo/elenco.pdf', 'TERAMO'),
-    ('https://www.omceoaq.it/albo/elenco_iscritti.pdf', "L'AQUILA"),
-    ('https://www.aslpe.it/documenti/medici_mmg.pdf', 'PESCARA'),
-    ('https://www.farmacistiabruzzo.it/albo/iscritti.pdf', 'ABRUZZO'),
+SKIP_WORDS = [
+    'COGNOME', 'NOME', 'PUNTEGGIO', 'SPECIALE', 'BOLLETTINO', 'REGIONE',
+    'ABRUZZO', 'AZIENDA', 'SANITARIA', 'PESCARA', 'TERAMO', 'CHIETI',
+    'AQUILA', 'AVEZZANO', 'SULMONA', 'LANCIANO', 'VASTO', 'DELIBERAZIONE',
+    'DIRETTORE', 'GENERALE', 'GRADUATORIE', 'ESCLUSI', 'MOTIVAZIONE',
+    'BRANCA', 'SEDE', 'LEGALE', 'RENATO', 'PAOLINI', 'VESTINI', 'DIRIGENTE',
+    'RESPONSABILE', 'CONVENZIONATI', 'GESTIONE', 'SANITARI', 'APPROVAZIONE',
+    'DEFINITIVE', 'VALEVOLI', 'ANNO', 'POWERED', 'TCPDF', 'ITALIANA',
+    'UFFICIALE', 'DICEMBRE', 'GENNAIO', 'FEBBRAIO', 'MARZO', 'APRILE',
 ]
 
-def scrapa_sito_ufficiale(url, provincia, driver=None):
-    trovate, visitati, da_visitare = [], set(), [url]
-    base = '/'.join(url.split('/')[:3])
-    KW = ['medic','dott','staff','specialist','contatt','reparti','ambulatori',
-          'personale','farmac','chirurg','cardio','gastro','dermato','pneumo',
-          'reumato','allergo','pediatr','direttore','primario','pdf','elenco','albo']
-    livello = 0
-    while da_visitare and livello <= 2:
-        batch = da_visitare[:]; da_visitare = []
-        for pu in batch:
-            if pu in visitati or len(visitati) > 50: continue
-            visitati.add(pu)
-            if pu.lower().endswith('.pdf'):
-                testo = scarica_pdf(pu)
-                for r in estrai_email_con_spec(testo, provincia):
-                    if r not in trovate: trovate.append(r)
-                pausa(); continue
-            t = scarica(pu, driver=driver)
-            if not t: pausa(); continue
-            for r in estrai_email_con_spec(t, provincia):
-                if r not in trovate: trovate.append(r)
-            if livello < 2:
-                for lk in re.findall(r'href=["\']([^"\']+)["\']', t):
-                    if any(k in lk.lower() for k in KW):
-                        fl = (lk if lk.startswith('http')
-                              else base+lk if lk.startswith('/')
-                              else base+'/'+lk)
-                        if base in fl and fl not in visitati:
-                            da_visitare.append(fl)
-            pausa()
-        livello += 1
-    return trovate
+medici_pdf = []
+seen = set()
+current_spec = None
+current_asl = 'PESCARA'
+
+with pdfplumber.open('bollettino-speciale-numero-288-del-31-12-2025.pdf') as pdf:
+    for page_num, page in enumerate(pdf.pages):
+        words = page.extract_words()
+        text = ' '.join([w['text'] for w in words])
+        text_upper = text.upper()
+
+        if 'ASL PESCARA' in text_upper and page_num > 40:
+            current_asl = 'PESCARA'
+        if 'LANCIANO' in text_upper and 'CHIETI' in text_upper:
+            current_asl = 'CHIETI'
+        if 'AVEZZANO' in text_upper and 'SULMONA' in text_upper:
+            current_asl = "L'AQUILA"
+        if 'ASL TERAMO' in text_upper or ('TERAMO' in text_upper and 'DELIBERAZIONE' in text_upper):
+            current_asl = 'TERAMO'
+
+        best_spec = None
+        best_len = 0
+        for spec in SPECIALIZZAZIONI_PDF:
+            if spec in text_upper and len(spec) > best_len:
+                best_spec = spec
+                best_len = len(spec)
+        if best_spec:
+            current_spec = best_spec
+
+        pattern = r'([A-Z][A-ZÀÈÉÌÒÙ\']+(?:\s+[A-ZÀÈÉÌÒÙ][A-ZÀÈÉÌÒÙ\']+){1,3})\s+(\d+[\.,]\d+)'
+        for match in re.finditer(pattern, text):
+            nome_raw = match.group(1).strip()
+            parole = nome_raw.split()
+            if len(parole) < 2 or len(parole) > 4: continue
+            if any(sw in nome_raw for sw in SKIP_WORDS): continue
+            if len(nome_raw) < 8: continue
+            key = (nome_raw, current_spec, current_asl)
+            if key in seen: continue
+            seen.add(key)
+            if current_spec:
+                medici_pdf.append({
+                    'nome': nome_raw,
+                    'specializzazione': current_spec,
+                    'asl': current_asl
+                })
+
+print(f'Estratti {len(medici_pdf)} medici dal PDF')
 
 # ============================================================
-# MAIN
+# STEP 2: Cerca email per ogni medico
 # ============================================================
-print('=' * 60)
-print('RICERCA EMAIL SANITARI - ABRUZZO v2.0')
-print(f'Inizio: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
-print('=' * 60)
+print('\n' + '='*60)
+print('STEP 2: Ricerca email per ogni medico')
+print('='*60)
 
-dati_finali = []
-email_set = set()
-
-def aggiungi(records):
-    n = 0
-    for r in records:
-        if r[2] not in email_set:
-            email_set.add(r[2])
-            dati_finali.append(r)
-            n += 1
-    if n > 0:
-        print(f'    >>> +{n} nuove | TOTALE: {len(dati_finali)}')
-    return n
-
-print('\nAvvio browser...')
+print('Avvio browser...')
 driver = crea_browser()
-print('  Browser OK' if driver else '  Uso solo requests')
+print('Browser OK' if driver else 'Solo requests disponibile')
 
-province_principali = ['pescara', 'chieti', 'teramo', "l'aquila"]
+risultati = []
+trovate_count = 0
 
-try:
-    print('\n[FASE 1] PDF ufficiali...')
-    for url, prov in PDF_UFFICIALI:
-        print(f'  {url}')
-        testo = scarica_pdf(url)
-        aggiungi(estrai_email_con_spec(testo, prov))
-
-    print('\n[FASE 2] Siti ordini e ASL...')
-    for url, prov in SITI_UFFICIALI:
-        print(f'  {url}')
-        aggiungi(scrapa_sito_ufficiale(url, prov, driver=driver))
-
-    print('\n[FASE 3] INI-PEC (registro PEC ufficiale)...')
-    aggiungi(scrapa_inipec(driver=driver))
-
-    print('\n[FASE 4] FNOMCeO (albo medici nazionale)...')
-    aggiungi(scrapa_fnomceo(driver=driver))
-
-    print('\n[FASE 5] Dottori.it...')
-    for spec in SPECIALIZZAZIONI:
-        for prov in province_principali:
-            aggiungi(scrapa_dottori(spec, prov, driver=driver))
-
-    print('\n[FASE 6] MioDottore...')
-    for spec in SPECIALIZZAZIONI:
-        for prov in province_principali:
-            aggiungi(scrapa_miodottore(spec, prov, driver=driver))
-
-    print('\n[FASE 7] Google Maps...')
-    for spec in list(SPECIALIZZAZIONI.keys())[:8]:
-        for prov in province_principali:
-            aggiungi(scrapa_google_maps(spec, prov, driver=driver))
-
-finally:
+for i, medico in enumerate(medici_pdf):
+    nome = medico['nome']
+    spec = medico['specializzazione']
+    asl = medico['asl']
+    
+    print(f'[{i+1}/{len(medici_pdf)}] {nome} - {spec}', end=' ... ')
+    
+    email = None
     if driver:
-        driver.quit()
+        email = cerca_email_sito(nome, spec, asl, driver)
+    if not email and driver:
+        email = cerca_email_google(nome, spec, asl, driver)
+    
+    if email:
+        trovate_count += 1
+        print(f'TROVATA: {email}')
+    else:
+        print('non trovata')
+    
+    risultati.append({
+        'nome': nome,
+        'email': email or '',
+        'specializzazione': spec,
+        'provincia': asl,
+        'fonte': 'Bollettino Ufficiale Regione Abruzzo 2026'
+    })
+    
+    time.sleep(random.uniform(2, 4))
+    
+    if (i + 1) % 50 == 0:
+        print(f'\n>>> Checkpoint: {trovate_count} email trovate su {i+1} medici\n')
 
-# Salva Excel
-print(f'\n{"="*60}')
-print(f'TOTALE FINALE: {len(dati_finali)} email')
-print('\nRiepilogo per specializzazione:')
-for label in SPECIALIZZAZIONI.values():
-    c = sum(1 for r in dati_finali if r[3] == label)
-    if c > 0: print(f'  {label}: {c}')
+if driver:
+    driver.quit()
 
-nome_file = f"email_sanitari_abruzzo_{datetime.now().strftime('%d%m%Y')}.xlsx"
+print(f'\nEmail trovate: {trovate_count}/{len(medici_pdf)}')
+
+# ============================================================
+# STEP 3: Unione con email esistenti
+# ============================================================
+print('\n' + '='*60)
+print('STEP 3: Unione con email esistenti')
+print('='*60)
+
+email_esistenti = []
+for excel_path in ['email_sanitari_abruzzo_07032026.xlsx']:
+    if os.path.exists(excel_path):
+        wb_old = load_workbook(excel_path)
+        ws_old = wb_old.active
+        for row in ws_old.iter_rows(min_row=2, values_only=True):
+            if row[2]:
+                email_esistenti.append({
+                    'nome': row[1] or '',
+                    'email': row[2],
+                    'specializzazione': row[3] or '',
+                    'provincia': row[4] or '',
+                    'fonte': 'Scraper automatico'
+                })
+        print(f'Caricate {len(email_esistenti)} email esistenti')
+
+tutte_email = set()
+finali = []
+
+for r in email_esistenti:
+    if r['email'] and r['email'] not in tutte_email:
+        tutte_email.add(r['email'])
+        finali.append(r)
+
+for r in risultati:
+    if r['email'] and r['email'] not in tutte_email:
+        tutte_email.add(r['email'])
+        finali.append(r)
+    elif not r['email']:
+        finali.append(r)
+
+print(f'Totale record: {len(finali)} | Con email: {sum(1 for r in finali if r["email"])}')
+
+# ============================================================
+# STEP 4: Crea Excel finale
+# ============================================================
 wb = Workbook()
-ws = wb.active
-ws.title = "Email Sanitari Abruzzo"
+ws1 = wb.active
+ws1.title = "Con Email"
+ws2 = wb.create_sheet("Tutti i Medici")
 
-# Intestazioni con stile
-intestazioni = ['Data', 'Nome', 'Email', 'Specializzazione', 'Provincia']
-for col, titolo in enumerate(intestazioni, 1):
-    cella = ws.cell(row=1, column=col, value=titolo)
-    cella.font = Font(bold=True, color='FFFFFF')
-    cella.fill = PatternFill(start_color='2E86AB', end_color='2E86AB', fill_type='solid')
-    cella.alignment = Alignment(horizontal='center')
+header_fill = PatternFill(start_color='1a3a5c', end_color='1a3a5c', fill_type='solid')
+header_font = Font(bold=True, color='FFFFFF', size=11)
+green_fill = PatternFill(start_color='d4edda', end_color='d4edda', fill_type='solid')
+gray_fill = PatternFill(start_color='f8f9fa', end_color='f8f9fa', fill_type='solid')
 
-for riga in dati_finali:
-    ws.append(riga)
+intestazioni = ['Data', 'Nome Completo', 'Email', 'Specializzazione', 'Provincia', 'Fonte']
 
-# Larghezza colonne
-ws.column_dimensions['A'].width = 12
-ws.column_dimensions['B'].width = 25
-ws.column_dimensions['C'].width = 35
-ws.column_dimensions['D'].width = 40
-ws.column_dimensions['E'].width = 15
+for ws in [ws1, ws2]:
+    for col, titolo in enumerate(intestazioni, 1):
+        cella = ws.cell(row=1, column=col, value=titolo)
+        cella.font = header_font
+        cella.fill = header_fill
+        cella.alignment = Alignment(horizontal='center')
+    ws.row_dimensions[1].height = 22
+    ws.freeze_panes = 'A2'
 
+oggi = datetime.now().strftime('%d/%m/%Y')
+riga1 = 2
+riga2 = 2
+
+for r in finali:
+    fill = green_fill if r['email'] else gray_fill
+    row_data = [oggi, r['nome'], r['email'], r['specializzazione'], r['provincia'], r['fonte']]
+    for col, val in enumerate(row_data, 1):
+        ws2.cell(row=riga2, column=col, value=val).fill = fill
+    riga2 += 1
+    if r['email']:
+        for col, val in enumerate(row_data, 1):
+            ws1.cell(row=riga1, column=col, value=val).fill = green_fill
+        riga1 += 1
+
+for ws in [ws1, ws2]:
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 30
+    ws.column_dimensions['C'].width = 38
+    ws.column_dimensions['D'].width = 35
+    ws.column_dimensions['E'].width = 15
+    ws.column_dimensions['F'].width = 30
+
+nome_file = f'medici_abruzzo_completo_{datetime.now().strftime("%d%m%Y")}.xlsx'
 wb.save(nome_file)
-print(f'\nFile Excel salvato: {nome_file}')
-print(f'Scaricalo dalla sezione Artifacts del workflow!')
+print(f'\nFile salvato: {nome_file}')
+print(f'Foglio "Con Email": {riga1-2} contatti')
+print(f'Foglio "Tutti i Medici": {riga2-2} record totali')
