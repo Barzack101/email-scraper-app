@@ -30,7 +30,10 @@ jobs:
         uses: nanasess/setup-chromedriver@v2
 
       - name: Avvia lo script
+        env:
+          HUNTER_API_KEY: ${{ secrets.HUNTER_API_KEY }}
         run: python scraper.py
+      
 
       - name: Scarica file Excel
         uses: actions/upload-artifact@v4
