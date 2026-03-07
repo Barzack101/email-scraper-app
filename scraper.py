@@ -1,26 +1,23 @@
 
-
 import os, re, time, random
 import requests
 import pdfplumber
-
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
 
-try:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    # DEBUG
-import os
+# DEBUG
 print("File nella cartella:")
 for f in os.listdir('.'):
     print(f' - {f}')
 print("Inizio script...")
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
     SELENIUM_OK = True
 except:
     SELENIUM_OK = False
-
 USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
