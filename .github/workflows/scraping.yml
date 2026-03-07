@@ -1,4 +1,4 @@
-name: Ricerca Email Sanitari con Specializzazione
+name: Run Email Scraper
 
 on:
   workflow_dispatch:
@@ -6,10 +6,12 @@ on:
     - cron: '0 8 * * 1'
 
 jobs:
-  ricerca:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 300
+
     steps:
-      - name: Checkout
+      - name: Checkout codice
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -17,18 +19,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Installa dipendenze
+      - name: Installa librerie
         run: |
-          pip install requests selenium pdfplumber openpyxl
+          pip install openpyxl pdfplumber requests
 
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@v1
+      - name: Avvia lo script
+        run: python scraper.py
 
-      - name: Setup ChromeDriver
-        uses: nanasess/setup-chromedriver@v2
-
-      - name: Esegui ricerca
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-        run: |
-          python scraper.py
+      - name: Scarica file Excel
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: email-sanitari-abruzzo
+          path: "*.xlsx"
+          retention-days: 30
