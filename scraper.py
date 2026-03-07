@@ -1,7 +1,4 @@
-import subprocess, sys
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', 
-    'openpyxl', 'pdfplumber', 'requests', 'selenium'], 
-    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 
 import os, re, time, random
 import requests
