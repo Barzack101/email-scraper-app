@@ -1,4 +1,3 @@
-
 import os, re, time, random
 import requests
 import pdfplumber
@@ -6,102 +5,12 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
 
-# DEBUG
 print("File nella cartella:")
 for f in os.listdir('.'):
     print(f' - {f}')
 print("Inizio script...")
 
-try:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    SELENIUM_OK = True
-except:
-    SELENIUM_OK = False
-USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
-]
-
-EMAIL_PATTERN = r'[a-zA-Z0-9.\-_+]+@[a-zA-Z0-9.\-_]+\.[a-z]{2,6}'
-DOMINI_ESCLUDI = [
-    'example.com','noreply','no-reply','privacy','dpo@','webmaster','sentry',
-    'w3.org','schema.org','googleapis','jquery','bootstrap','cloudflare',
-    'facebook','twitter','youtube','google.','microsoft','apple.com','wix',
-    'wordpress','jsdelivr','cdnjs','fontawesome','gstatic','doubleclick',
-]
-
-def is_email_valida(email):
-    el = email.lower()
-    if any(x in el for x in DOMINI_ESCLUDI): return False
-    if len(email) < 8: return False
-    if el.endswith(('.js','.css','.png','.jpg','.svg','.php')): return False
-    if el.count('@') != 1: return False
-    return True
-
-def crea_browser():
-    if not SELENIUM_OK: return None
-    options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_experimental_option('excludeSwitches', ['enable-automation'])
-    options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
-    options.add_argument('--window-size=1920,1080')
-    try:
-        driver = webdriver.Chrome(options=options)
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        return driver
-    except Exception as e:
-        print(f'Browser non disponibile: {e}')
-        return None
-
-def cerca_email_google(nome, specializzazione, provincia, driver):
-    if not driver: return None
-    query = f'"{nome}" {specializzazione.lower()} {provincia.lower()} email contatti'
-    url = f'https://www.google.com/search?q={query.replace(" ", "+")}'
-    try:
-        driver.get(url)
-        time.sleep(random.uniform(3, 5))
-        testo = driver.page_source
-        emails = re.findall(EMAIL_PATTERN, testo)
-        for email in emails:
-            email = email.lower().strip('.')
-            if is_email_valida(email):
-                return email
-    except Exception as e:
-        print(f'    Errore Google: {e}')
-    return None
-
-def cerca_email_sito(nome, specializzazione, provincia, driver):
-    if not driver: return None
-    urls = [
-        f'https://www.dottori.it/cerca?q={nome.replace(" ", "+")}&city={provincia.lower()}',
-        f'https://www.miodottore.it/cerca?q={nome.replace(" ", "+")}',
-    ]
-    for url in urls:
-        try:
-            driver.get(url)
-            time.sleep(random.uniform(2, 4))
-            testo = driver.page_source
-            if nome.split()[0].lower() in testo.lower():
-                emails = re.findall(EMAIL_PATTERN, testo)
-                for email in emails:
-                    email = email.lower().strip('.')
-                    if is_email_valida(email):
-                        return email
-        except:
-            pass
-    return None
-
-# ============================================================
-# STEP 1: Estrai medici dal PDF
-# ============================================================
-print('='*60)
-print('STEP 1: Estrazione medici dal PDF ufficiale')
-print('='*60)
+HUNTER_API_KEY = os.getenv('HUNTER_API_KEY', '')
 
 SPECIALIZZAZIONI_PDF = [
     'ALLERGOLOGIA', 'AUDIOLOGIA E FONATRIA', 'BIOLOGIA', 'CARDIOLOGIA',
@@ -127,12 +36,99 @@ SKIP_WORDS = [
     'UFFICIALE', 'DICEMBRE', 'GENNAIO', 'FEBBRAIO', 'MARZO', 'APRILE',
 ]
 
+# Domini medici italiani comuni
+DOMINI_MEDICI = [
+    'gmail.com', 'libero.it', 'yahoo.it', 'hotmail.it',
+    'alice.it', 'virgilio.it', 'tiscali.it', 'fastwebnet.it',
+    'omceope.it', 'omceochieti.it', 'omceoteramo.it', 'omceoaq.it',
+    'aslpe.it', 'asl2abruzzo.it', 'asl1abruzzo.it', 'aslteramo.it',
+]
+
+def cerca_email_hunter(nome, cognome):
+    """Cerca email tramite Hunter.io Email Finder"""
+    if not HUNTER_API_KEY:
+        return None, None
+    try:
+        url = 'https://api.hunter.io/v2/email-finder'
+        params = {
+            'first_name': nome,
+            'last_name': cognome,
+            'domain': 'gmail.com',
+            'api_key': HUNTER_API_KEY
+        }
+        res = requests.get(url, params=params, timeout=15)
+        data = res.json()
+        if data.get('data', {}).get('email'):
+            email = data['data']['email']
+            score = data['data'].get('score', 0)
+            return email, score
+    except Exception as e:
+        print(f'    Hunter error: {e}')
+    return None, None
+
+def cerca_email_hunter_domini(nome, cognome):
+    """Prova più domini con Hunter.io"""
+    if not HUNTER_API_KEY:
+        return None
+    
+    # Prova prima con domini ASL/ordini
+    domini_da_provare = [
+        'aslpe.it', 'asl2abruzzo.it', 'asl1abruzzo.it', 'aslteramo.it',
+        'gmail.com', 'libero.it', 'yahoo.it'
+    ]
+    
+    for dominio in domini_da_provare:
+        try:
+            url = 'https://api.hunter.io/v2/email-finder'
+            params = {
+                'first_name': nome,
+                'last_name': cognome,
+                'domain': dominio,
+                'api_key': HUNTER_API_KEY
+            }
+            res = requests.get(url, params=params, timeout=15)
+            data = res.json()
+            if data.get('data', {}).get('email'):
+                score = data['data'].get('score', 0)
+                if score >= 50:  # Solo email con buona affidabilità
+                    return data['data']['email']
+        except:
+            pass
+        time.sleep(0.5)
+    return None
+
+def controlla_crediti_hunter():
+    """Controlla quanti crediti Hunter.io rimangono"""
+    if not HUNTER_API_KEY:
+        return 0
+    try:
+        res = requests.get(
+            'https://api.hunter.io/v2/account',
+            params={'api_key': HUNTER_API_KEY},
+            timeout=10
+        )
+        data = res.json()
+        requests_left = data.get('data', {}).get('requests', {}).get('searches', {}).get('available', 0)
+        print(f'Crediti Hunter.io disponibili: {requests_left}')
+        return requests_left
+    except:
+        return 0
+
+# ============================================================
+# STEP 1: Estrai medici dal PDF
+# ============================================================
+print('='*60)
+print('STEP 1: Estrazione medici dal PDF ufficiale')
+print('='*60)
+
 medici_pdf = []
 seen = set()
 current_spec = None
 current_asl = 'PESCARA'
 
-with pdfplumber.open('bollettino-speciale-numero-288-del-31-12-2025.pdf') as pdf:
+pdf_path = 'bollettino-speciale-numero-288-del-31-12-2025.pdf'
+
+with pdfplumber.open(pdf_path) as pdf:
     for page_num, page in enumerate(pdf.pages):
         words = page.extract_words()
         text = ' '.join([w['text'] for w in words])
@@ -176,99 +172,65 @@ with pdfplumber.open('bollettino-speciale-numero-288-del-31-12-2025.pdf') as pdf
 print(f'Estratti {len(medici_pdf)} medici dal PDF')
 
 # ============================================================
-# STEP 2: Cerca email per ogni medico
+# STEP 2: Cerca email con Hunter.io
 # ============================================================
 print('\n' + '='*60)
-print('STEP 2: Ricerca email per ogni medico')
+print('STEP 2: Ricerca email con Hunter.io')
 print('='*60)
 
-print('Avvio browser...')
-driver = crea_browser()
-print('Browser OK' if driver else 'Solo requests disponibile')
+crediti = controlla_crediti_hunter()
+print(f'Crediti disponibili: {crediti}')
 
 risultati = []
 trovate_count = 0
 
 for i, medico in enumerate(medici_pdf):
-    nome = medico['nome']
+    nome_completo = medico['nome']
     spec = medico['specializzazione']
     asl = medico['asl']
     
-    print(f'[{i+1}/{len(medici_pdf)}] {nome} - {spec}', end=' ... ')
+    # Separa nome e cognome
+    parole = nome_completo.split()
+    cognome = parole[0]
+    nome = ' '.join(parole[1:]) if len(parole) > 1 else parole[0]
+    
+    print(f'[{i+1}/{len(medici_pdf)}] {nome_completo} - {spec}', end=' ... ')
     
     email = None
-    if driver:
-        email = cerca_email_sito(nome, spec, asl, driver)
-    if not email and driver:
-        email = cerca_email_google(nome, spec, asl, driver)
     
-    if email:
-        trovate_count += 1
-        print(f'TROVATA: {email}')
+    if crediti > 5:
+        email = cerca_email_hunter_domini(nome, cognome)
+        if email:
+            trovate_count += 1
+            crediti -= 1
+            print(f'TROVATA: {email}')
+        else:
+            print('non trovata')
     else:
-        print('non trovata')
+        print('crediti esauriti')
     
     risultati.append({
-        'nome': nome,
+        'nome': nome_completo,
         'email': email or '',
         'specializzazione': spec,
         'provincia': asl,
         'fonte': 'Bollettino Ufficiale Regione Abruzzo 2026'
     })
     
-    time.sleep(random.uniform(2, 4))
+    time.sleep(0.3)
     
     if (i + 1) % 50 == 0:
         print(f'\n>>> Checkpoint: {trovate_count} email trovate su {i+1} medici\n')
 
-if driver:
-    driver.quit()
-
 print(f'\nEmail trovate: {trovate_count}/{len(medici_pdf)}')
 
 # ============================================================
-# STEP 3: Unione con email esistenti
+# STEP 3: Crea Excel finale
 # ============================================================
 print('\n' + '='*60)
-print('STEP 3: Unione con email esistenti')
+print('STEP 3: Creazione Excel finale')
 print('='*60)
 
-email_esistenti = []
-for excel_path in ['email_sanitari_abruzzo_07032026.xlsx']:
-    if os.path.exists(excel_path):
-        wb_old = load_workbook(excel_path)
-        ws_old = wb_old.active
-        for row in ws_old.iter_rows(min_row=2, values_only=True):
-            if row[2]:
-                email_esistenti.append({
-                    'nome': row[1] or '',
-                    'email': row[2],
-                    'specializzazione': row[3] or '',
-                    'provincia': row[4] or '',
-                    'fonte': 'Scraper automatico'
-                })
-        print(f'Caricate {len(email_esistenti)} email esistenti')
-
-tutte_email = set()
-finali = []
-
-for r in email_esistenti:
-    if r['email'] and r['email'] not in tutte_email:
-        tutte_email.add(r['email'])
-        finali.append(r)
-
-for r in risultati:
-    if r['email'] and r['email'] not in tutte_email:
-        tutte_email.add(r['email'])
-        finali.append(r)
-    elif not r['email']:
-        finali.append(r)
-
-print(f'Totale record: {len(finali)} | Con email: {sum(1 for r in finali if r["email"])}')
-
-# ============================================================
-# STEP 4: Crea Excel finale
-# ============================================================
 wb = Workbook()
 ws1 = wb.active
 ws1.title = "Con Email"
@@ -294,7 +256,7 @@ oggi = datetime.now().strftime('%d/%m/%Y')
 riga1 = 2
 riga2 = 2
 
-for r in finali:
+for r in risultati:
     fill = green_fill if r['email'] else gray_fill
     row_data = [oggi, r['nome'], r['email'], r['specializzazione'], r['provincia'], r['fonte']]
     for col, val in enumerate(row_data, 1):
