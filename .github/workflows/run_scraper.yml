@@ -20,7 +20,8 @@ jobs:
           python-version: '3.11'
 
       - name: Installa librerie
-        run: pip install requests selenium pdfplumber openpyxl
+        run: |
+          pip install openpyxl pdfplumber requests selenium
 
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1
