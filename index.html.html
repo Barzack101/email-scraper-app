@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CD Artificial Innovation — Lead Generation per ogni settore</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0c0e;
+  --surface: #141416;
+  --border: rgba(255,255,255,0.07);
+  --gold: #d4a843;
+  --gold2: #f0c96a;
+  --text: #f0ede8;
+  --muted: rgba(240,237,232,0.45);
+  --accent: #2a6496;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+/* CURSOR */
+*, *::before, *::after { cursor: none !important; }
+#cursor {
+  width: 10px; height: 10px;
+  background: var(--gold);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.15s ease;
+  mix-blend-mode: difference;
+}
+#cursor-ring {
+  width: 36px; height: 36px;
+  border: 1px solid rgba(212,168,67,0.4);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+  transition: all 0.08s ease;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 500;
+  padding: 1.4rem 5vw;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s;
+}
+nav.scrolled {
+  background: rgba(12,12,14,0.95);
+  border-bottom-color: var(--border);
+  backdrop-filter: blur(20px);
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.logo span { color: var(--gold); }
+.nav-links { display: flex; gap: 2.5rem; }
+.nav-links a {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--gold); }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 8rem 5vw 4rem;
+  position: relative;
+  overflow: hidden;
+  gap: 4rem;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 50% 70% at 70% 40%, rgba(212,168,67,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 50% at 20% 80%, rgba(42,100,150,0.05) 0%, transparent 50%);
+}
+
+/* Grid pattern */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
+}
+
+.hero-left { position: relative; z-index: 2; }
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 2rem;
+}
+.hero-tag::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: var(--gold);
+}
+
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2.8rem, 4.5vw, 5rem);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+h1 em {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+}
+
+.hero-desc {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--muted);
+  max-width: 460px;
+  margin-bottom: 2.5rem;
+}
+
+.btn-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+.btn-gold {
+  background: var(--gold);
+  color: #0c0c0e;
+  padding: 0.85rem 2rem;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.25s;
+  border: none;
+}
+.btn-gold:hover {
+  background: var(--gold2);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(212,168,67,0.25);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  padding: 0.85rem 2rem;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-block;
+  border: 1px solid var(--border);
+  transition: all 0.25s;
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+/* HERO RIGHT - Settori animati */
+.hero-right {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sector-pill {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  opacity: 0;
+  transform: translateX(30px);
+  animation: slideIn 0.5s ease forwards;
+}
+
+.sector-pill:nth-child(1) { animation-delay: 0.2s; }
+.sector-pill:nth-child(2) { animation-delay: 0.35s; }
+.sector-pill:nth-child(3) { animation-delay: 0.5s; }
+.sector-pill:nth-child(4) { animation-delay: 0.65s; }
+.sector-pill:nth-child(5) { animation-delay: 0.8s; }
+.sector-pill:nth-child(6) { animation-delay: 0.95s; }
+.sector-pill:nth-child(7) { animation-delay: 1.1s; }
+.sector-pill:nth-child(8) { animation-delay: 1.25s; }
+
+.sector-icon { font-size: 1.4rem; flex-shrink: 0; }
+.sector-info { flex: 1; }
+.sector-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+.sector-desc { font-size: 0.75rem; color: var(--muted); }
+.sector-count {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--gold);
+}
+
+@keyframes slideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* STATS BAR */
+.stats-bar {
+  padding: 2rem 5vw;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+}
+
+.stat-item {
+  padding: 1.5rem 2rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.stat-item:last-child { border-right: none; }
+
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+.stat-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* SECTIONS */
+section { padding: 6rem 5vw; }
+
+.section-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.2rem;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  max-width: 60px;
+  height: 1px;
+  background: var(--gold);
+  opacity: 0.4;
+}
+
+h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2rem, 3vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+}
+h2 em {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--gold);
+}
+
+/* SETTORI GRID */
+.settori { background: var(--bg); }
+
+.settori-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1px;
+  margin-top: 4rem;
+  border: 1px solid var(--border);
+}
+
+.settore-card {
+  padding: 2rem;
+  background: var(--surface);
+  border: 1px solid transparent;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.settore-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+
+.settore-card:hover { background: rgba(212,168,67,0.04); border-color: rgba(212,168,67,0.15); }
+.settore-card:hover::after { transform: scaleX(1); }
+
+.settore-emoji { font-size: 2rem; margin-bottom: 1rem; }
+.settore-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.settore-examples {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* COME FUNZIONA */
+.come-funziona { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+  margin-top: 4rem;
+  position: relative;
+}
+
+.steps-grid::before {
+  content: '';
+  position: absolute;
+  top: 2.5rem;
+  left: 16%;
+  right: 16%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.3;
+}
+
+.step {
+  text-align: center;
+  position: relative;
+}
+
+.step-circle {
+  width: 50px; height: 50px;
+  background: var(--bg);
+  border: 1px solid rgba(212,168,67,0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--gold);
+  position: relative;
+  z-index: 1;
+}
+
+.step h3 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.step p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* PREZZI */
+.prezzi { background: var(--bg); }
+
+.prezzi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 4rem;
+}
+
+.prezzo-card {
+  padding: 2.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: all 0.3s;
+}
+
+.prezzo-card.featured {
+  border-color: var(--gold);
+  background: rgba(212,168,67,0.04);
+}
+
+.prezzo-card.featured::before {
+  content: 'PIÙ VENDUTO';
+  position: absolute;
+  top: -1px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--gold);
+  color: var(--bg);
+  font-family: 'Syne', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  padding: 0.3rem 1rem;
+}
+
+.prezzo-card:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+
+.prezzo-tipo {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+
+.prezzo-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.prezzo-num span {
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.prezzo-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.prezzo-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-bottom: 2rem;
+}
+
+.prezzo-features li {
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.prezzo-features li::before {
+  content: '✓';
+  color: var(--gold);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* CONTATTI */
+.contatti {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.contatti-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.contatti-inner h2 { margin-bottom: 0.8rem; }
+
+.contatti-sub {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin-bottom: 3rem;
+  line-height: 1.7;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: left;
+}
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+input, textarea, select {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.9rem 1.2rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: none;
+}
+
+input::placeholder, textarea::placeholder { color: rgba(240,237,232,0.25); }
+input:focus, textarea:focus, select:focus { border-color: var(--gold); }
+select option { background: var(--bg); }
+textarea { resize: vertical; min-height: 110px; }
+
+.form-note {
+  font-size: 0.72rem;
+  color: rgba(240,237,232,0.25);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* FOOTER */
+footer {
+  padding: 2rem 5vw;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-copy { font-size: 0.75rem; color: var(--muted); }
+
+/* SCROLL ANIMATIONS */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* MOBILE */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding-top: 7rem; }
+  .hero-right { display: none; }
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .steps-grid { grid-template-columns: 1fr; }
+  .steps-grid::before { display: none; }
+  .prezzi-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  nav .nav-links { display: none; }
+  footer { flex-direction: column; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<nav id="nav">
+  <div class="logo">CD <span>Artificial</span> Innovation</div>
+  <div class="nav-links">
+    <a href="#settori">Settori</a>
+    <a href="#come-funziona">Come funziona</a>
+    <a href="#prezzi">Prezzi</a>
+    <a href="#contatti">Contatti</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+
+  <div class="hero-left">
+    <div class="hero-tag">Lead Generation · Ogni Settore · Italia</div>
+    <h1>Liste contatti<br><em>professionali</em><br>per la tua agenzia</h1>
+    <p class="hero-desc">
+      Forniamo database aggiornati e verificati di professionisti italiani per qualsiasi settore — dal medicale all'ingegneria, dalla tecnologia alla ristorazione. Dati pronti all'uso per campagne marketing, eventi e vendite.
+    </p>
+    <div class="btn-group">
+      <a href="#contatti" class="btn-gold">Richiedi campione gratuito</a>
+      <a href="#settori" class="btn-outline">Vedi tutti i settori</a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="sector-pill">
+      <div class="sector-icon">🏥</div>
+      <div class="sector-info">
+        <div class="sector-name">Medici & Sanitari</div>
+        <div class="sector-desc">Specialisti, MMG, farmacisti</div>
+      </div>
+      <div class="sector-count">+500</div>
+    </div>
+    <div class="sector-pill">
+      <div class="sector-icon">⚙️</div>
+      <div class="sector-info">
+        <div class="sector-name">Ingegneri & Architetti</div>
+        <div class="sector-desc">Studi tecnici e professionisti</div>
+      </div>
+      <div class="sector-count">+800</div>
+    </div>
+    <div class="sector-pill">
+      <div class="sector-icon">💻</div>
+      <div class="sector-info">
+        <div class="sector-name">Aziende Tech</div>
+        <div class="sector-desc">Startup, software house, IT</div>
+      </div>
+      <div class="sector-count">+300</div>
+    </div>
+    <div class="sector-pill">
+      <div class="sector-icon">⚖️</div>
+      <div class="sector-info">
+        <div class="sector-name">Avvocati & Notai</div>
+        <div class="sector-desc">Studi legali e professionisti</div>
+      </div>
+      <div class="sector-count">+600</div>
+    </div>
+    <div class="sector-pill">
+      <div class="sector-icon">🍽️</div>
+      <div class="sector-info">
+        <div class="sector-name">Ristorazione & Food</div>
+        <div class="sector-desc">Ristoranti, bar, catering</div>
+      </div>
+      <div class="sector-count">+1200</div>
+    </div>
+    <div class="sector-pill">
+      <div class="sector-icon">🏗️</div>
+      <div class="sector-info">
+        <div class="sector-name">Edilizia & Costruzioni</div>
+        <div class="sector-desc">Imprese, geometri, progettisti</div>
+      </div>
+      <div class="sector-count">+400</div>
+    </div>
+    <div class="sector-pill">
+      <div class="sector-icon">📊</div>
+      <div class="sector-info">
+        <div class="sector-name">Commercialisti & CFO</div>
+        <div class="sector-desc">Studi e consulenti fiscali</div>
+      </div>
+      <div class="sector-count">+700</div>
+    </div>
+    <div class="sector-pill">
+      <div class="sector-icon">🎓</div>
+      <div class="sector-info">
+        <div class="sector-name">Istruzione & Formazione</div>
+        <div class="sector-desc">Scuole, università, docenti</div>
+      </div>
+      <div class="sector-count">+900</div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item reveal">
+    <div class="stat-num">20+</div>
+    <div class="stat-label">Settori coperti</div>
+  </div>
+  <div class="stat-item reveal">
+    <div class="stat-num">48h</div>
+    <div class="stat-label">Consegna lista</div>
+  </div>
+  <div class="stat-item reveal">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Fonti ufficiali</div>
+  </div>
+  <div class="stat-item reveal">
+    <div class="stat-num">Excel</div>
+    <div class="stat-label">Formato consegna</div>
+  </div>
+</div>
+
+<!-- SETTORI -->
+<section class="settori" id="settori">
+  <div class="section-label">Copertura completa</div>
+  <h2>Liste per <em>ogni settore</em><br>professionale</h2>
+
+  <div class="settori-grid">
+    <div class="settore-card reveal">
+      <div class="settore-emoji">🏥</div>
+      <div class="settore-title">Medici & Sanitari</div>
+      <div class="settore-examples">Medici specialisti, MMG, farmacisti, infermieri, psicologi, fisioterapisti</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">⚙️</div>
+      <div class="settore-title">Ingegneri & Architetti</div>
+      <div class="settore-examples">Ingegneri civili, meccanici, elettrici, architetti, geometri, periti</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">💻</div>
+      <div class="settore-title">Tecnologia & IT</div>
+      <div class="settore-examples">Startup, software house, sviluppatori, CTO, responsabili IT, web agency</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">⚖️</div>
+      <div class="settore-title">Legale & Notarile</div>
+      <div class="settore-examples">Avvocati, notai, studi legali, consulenti del lavoro, mediatori</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">📊</div>
+      <div class="settore-title">Finanza & Consulenza</div>
+      <div class="settore-examples">Commercialisti, CFO, consulenti fiscali, revisori, financial advisor</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">🍽️</div>
+      <div class="settore-title">Ristorazione & Food</div>
+      <div class="settore-examples">Ristoranti, bar, pizzerie, catering, pasticcerie, food delivery</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">🏗️</div>
+      <div class="settore-title">Edilizia & Real Estate</div>
+      <div class="settore-examples">Imprese edili, immobiliari, costruttori, interior designer, serramentisti</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">🎓</div>
+      <div class="settore-title">Istruzione & Formazione</div>
+      <div class="settore-examples">Scuole, università, accademie, docenti, formatori, coach</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">🚗</div>
+      <div class="settore-title">Automotive & Mobilità</div>
+      <div class="settore-examples">Concessionarie, officine, noleggio, trasporti, logistica</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">💄</div>
+      <div class="settore-title">Beauty & Wellness</div>
+      <div class="settore-examples">Parrucchieri, estetiste, centri benessere, palestre, personal trainer</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">🏨</div>
+      <div class="settore-title">Turismo & Hospitality</div>
+      <div class="settore-examples">Hotel, B&B, agenzie viaggio, tour operator, strutture ricettive</div>
+    </div>
+    <div class="settore-card reveal">
+      <div class="settore-emoji">🎯</div>
+      <div class="settore-title">Marketing & Comunicazione</div>
+      <div class="settore-examples">Agenzie pubblicità, PR, social media, fotografi, videomaker</div>
+    </div>
+  </div>
+</section>
+
+<!-- COME FUNZIONA -->
+<section class="come-funziona" id="come-funziona">
+  <div class="section-label">Processo semplice</div>
+  <h2>Come <em>funziona</em></h2>
+
+  <div class="steps-grid">
+    <div class="step reveal">
+      <div class="step-circle">01</div>
+      <h3>Ci dici cosa ti serve</h3>
+      <p>Scegli il settore, la zona geografica e il numero di contatti. Puoi richiedere filtri specifici per ruolo, dimensione azienda o altre caratteristiche.</p>
+    </div>
+    <div class="step reveal">
+      <div class="step-circle">02</div>
+      <h3>Raccogliamo i dati</h3>
+      <p>Il nostro sistema analizza fonti pubbliche ufficiali — albi professionali, registri nazionali, siti istituzionali — e verifica ogni contatto.</p>
+    </div>
+    <div class="step reveal">
+      <div class="step-circle">03</div>
+      <h3>Ricevi il tuo Excel</h3>
+      <p>Entro 24-48 ore ricevi un file Excel professionale con nome, email, settore e provincia. Pronto per il tuo CRM o piattaforma di email marketing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PREZZI -->
+<section class="prezzi" id="prezzi">
+  <div class="section-label">Investimento trasparente</div>
+  <h2>Prezzi <em>chiari</em><br>senza sorprese</h2>
+
+  <div class="prezzi-grid">
+    <div class="prezzo-card reveal">
+      <div class="prezzo-tipo">Lista Pronta</div>
+      <div class="prezzo-num">€150 <span>/ lista</span></div>
+      <div class="prezzo-desc">Database già raccolto per regione e settore. Disponibile in 24 ore.</div>
+      <ul class="prezzo-features">
+        <li>Fino a 300 contatti verificati</li>
+        <li>Nome, email, settore, città</li>
+        <li>File Excel professionale</li>
+        <li>1 settore a scelta</li>
+        <li>1 regione a scelta</li>
+      </ul>
+      <a href="#contatti" class="btn-outline" style="width:100%; text-align:center; display:block;">Richiedi ora</a>
+    </div>
+
+    <div class="prezzo-card featured reveal">
+      <div class="prezzo-tipo">Ricerca Personalizzata</div>
+      <div class="prezzo-num">€250 <span>/ ricerca</span></div>
+      <div class="prezzo-desc">Lista costruita su misura per le tue esigenze. Consegna in 48 ore.</div>
+      <ul class="prezzo-features">
+        <li>Fino a 500 contatti verificati</li>
+        <li>Filtri personalizzati avanzati</li>
+        <li>Qualsiasi settore e zona</li>
+        <li>File Excel con formattazione</li>
+        <li>Supporto post-consegna</li>
+      </ul>
+      <a href="#contatti" class="btn-gold" style="width:100%; text-align:center; display:block;">Richiedi ora</a>
+    </div>
+
+    <div class="prezzo-card reveal">
+      <div class="prezzo-tipo">Abbonamento Mensile</div>
+      <div class="prezzo-num">€399 <span>/ mese</span></div>
+      <div class="prezzo-desc">Liste aggiornate ogni mese. Ideale per agenzie con campagne ricorrenti.</div>
+      <ul class="prezzo-features">
+        <li>5 ricerche personalizzate</li>
+        <li>Aggiornamento mensile dati</li>
+        <li>Tutti i settori inclusi</li>
+        <li>Tutta Italia</li>
+        <li>Priorità nella consegna</li>
+      </ul>
+      <a href="#contatti" class="btn-outline" style="width:100%; text-align:center; display:block;">Richiedi ora</a>
+    </div>
+  </div>
+</section>
+
+<!-- CONTATTI -->
+<section class="contatti" id="contatti">
+  <div class="contatti-inner">
+    <div class="section-label" style="justify-content:center;">Inizia oggi</div>
+    <h2>Richiedi il tuo<br><em>campione gratuito</em></h2>
+    <p class="contatti-sub">Compila il modulo e ti inviamo 50 contatti verificati nel settore e zona che preferisci — completamente gratis.</p>
+
+    <div class="form">
+      <div class="form-row">
+        <input type="text" placeholder="Nome e Cognome *">
+        <input type="text" placeholder="Nome Agenzia *">
+      </div>
+      <div class="form-row">
+        <input type="email" placeholder="Email *">
+        <input type="tel" placeholder="Telefono">
+      </div>
+      <select>
+        <option value="" disabled selected>Settore di interesse *</option>
+        <option>Medici & Sanitari</option>
+        <option>Ingegneri & Architetti</option>
+        <option>Tecnologia & IT</option>
+        <option>Legale & Notarile</option>
+        <option>Finanza & Consulenza</option>
+        <option>Ristorazione & Food</option>
+        <option>Edilizia & Real Estate</option>
+        <option>Istruzione & Formazione</option>
+        <option>Automotive & Mobilità</option>
+        <option>Beauty & Wellness</option>
+        <option>Turismo & Hospitality</option>
+        <option>Marketing & Comunicazione</option>
+        <option>Altro settore</option>
+      </select>
+      <input type="text" placeholder="Regione / Province di interesse *">
+      <textarea placeholder="Dettagli aggiuntivi (tipo di professionisti, dimensione azienda, ecc.)"></textarea>
+      <a href="mailto:info@cdartificialinnovation.it" class="btn-gold" style="text-align:center; padding: 1.1rem;">
+        Invia richiesta campione gratuito →
+      </a>
+      <p class="form-note">I dati raccolti sono trattati nel rispetto del GDPR. I contatti forniti provengono esclusivamente da fonti pubbliche ufficiali.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="logo">CD <span>Artificial</span> Innovation</div>
+  <div class="footer-copy">© 2026 CD Artificial Innovation · info@cdartificialinnovation.it</div>
+</footer>
+
+<script>
+// Custom cursor
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx - 5 + 'px';
+  cursor.style.top = my - 5 + 'px';
+});
+
+function animRing() {
+  rx += (mx - rx - 18) * 0.12;
+  ry += (my - ry - 18) * 0.12;
+  ring.style.left = rx + 'px';
+  ring.style.top = ry + 'px';
+  requestAnimationFrame(animRing);
+}
+animRing();
+
+// Nav scroll
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+  });
+});
+</script>
+</body>
+</html>
