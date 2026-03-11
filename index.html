@@ -902,9 +902,9 @@ footer {
       </select>
       <input type="text" placeholder="Regione / Province di interesse *">
       <textarea placeholder="Dettagli aggiuntivi (tipo di professionisti, dimensione azienda, ecc.)"></textarea>
-      <a href="mailto:carlodattanasio3@gmail.com.it" class="btn-gold" style="text-align:center; padding: 1.1rem;">
+      <button onclick="inviaRichiesta()" class="btn-gold" style="text-align:center; padding: 1.1rem; width:100%; font-size:0.82rem; letter-spacing:0.1em; text-transform:uppercase; font-family:'Syne',sans-serif; font-weight:700;">
         Invia richiesta campione gratuito →
-      </a>
+      </button>
       <p class="form-note">I dati raccolti sono trattati nel rispetto del GDPR. I contatti forniti provengono esclusivamente da fonti pubbliche ufficiali.</p>
     </div>
   </div>
@@ -913,10 +913,41 @@ footer {
 <!-- FOOTER -->
 <footer>
   <div class="logo">CD <span>Artificial</span> Innovation</div>
-  <div class="footer-copy">© 2026 CD Artificial Innovation · carlodattanasio3@gmail.com.it</div>
+  <div class="footer-copy">© 2026 CD Artificial Innovation · carlodattanasio3@gmail.com</div>
 </footer>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// Invia richiesta via email
+function inviaRichiesta() {
+  const inputs = document.querySelectorAll('.form input, .form textarea, .form select');
+  const nome = inputs[0]?.value || '';
+  const agenzia = inputs[1]?.value || '';
+  const email = inputs[2]?.value || '';
+  const tel = inputs[3]?.value || '';
+  const settore = inputs[4]?.value || '';
+  const provincia = inputs[5]?.value || '';
+  const dettagli = inputs[6]?.value || '';
+
+  const oggetto = `Richiesta campione gratuito - ${settore || 'Settore non specificato'}`;
+  const corpo = `Gentile Carlo,
+
+Sono interessato al campione gratuito di contatti professionali.
+
+DATI RICHIEDENTE:
+- Nome: ${nome}
+- Agenzia: ${agenzia}
+- Email: ${email}
+- Telefono: ${tel}
+- Settore di interesse: ${settore}
+- Regione/Province: ${provincia}
+- Dettagli: ${dettagli}
+
+In attesa di riscontro,
+${nome}`;
+
+  window.location.href = `mailto:carlodattanasio3@gmail.com?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(corpo)}`;
+}
+
 // Custom cursor
 const cursor = document.getElementById('cursor');
 const ring = document.getElementById('cursor-ring');
@@ -953,13 +984,4 @@ const observer = new IntersectionObserver(entries => {
 
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-// Smooth scroll
-document.querySelectorAll('a[href^="#"]').forEach(a => {
-  a.addEventListener('click', e => {
-    const target = document.querySelector(a.getAttribute('href'));
-    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
-  });
-});
-</script>
-</body>
-</html>
+// Smoo
